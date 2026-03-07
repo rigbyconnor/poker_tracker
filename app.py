@@ -63,21 +63,21 @@ def checkbox_grid(label, options, key_prefix, columns=2):
 
 
 # ---------------------------------------------------------
-# UI: Log a hand (this stays at the top visually)
+# UI: Log a hand (always shown at the top)
 # ---------------------------------------------------------
 st.title("Poker Night Tracker")
 st.header("Log a Hand")
 
 # ---------------------------------------------------------
-# Players in Tonight's Game (dropdown, moved BELOW Log a Hand)
+# Players in Tonight's Game (collapsible dropdown BELOW Log Hand)
 # ---------------------------------------------------------
-st.subheader("Players in Tonight's Game")
-players_in_game = st.multiselect(
-    "Select players in tonight's game:",
-    options=player_names,
-    default=[],
-    key="players_in_tonights_game"
-)
+with st.expander("Players in Tonight's Game"):
+    players_in_game = st.multiselect(
+        "Select players in tonight's game:",
+        options=player_names,
+        default=[],
+        key="players_in_tonights_game"
+    )
 
 # If no players selected, stop here
 if not players_in_game:
@@ -180,7 +180,7 @@ if st.button("Submit Hand", type="primary"):
 
 
 # ---------------------------------------------------------
-# Add Player (now BELOW Players in Tonight's Game)
+# Add Player (still collapsible, below tonight's players)
 # ---------------------------------------------------------
 with st.expander("Add Player"):
     new_player = st.text_input("New Player Name")

@@ -63,39 +63,31 @@ def checkbox_grid(label, options, key_prefix, columns=2):
 
 
 # ---------------------------------------------------------
-# Players in Game (first required step)
+# UI: Log a hand (this stays at the top visually)
 # ---------------------------------------------------------
-st.subheader("Players in Game")
+st.title("Poker Night Tracker")
+st.header("Log a Hand")
+
+# ---------------------------------------------------------
+# Players in Tonight's Game (dropdown, moved BELOW Log a Hand)
+# ---------------------------------------------------------
+st.subheader("Players in Tonight's Game")
 players_in_game = st.multiselect(
-    "Select players in this game:",
+    "Select players in tonight's game:",
     options=player_names,
     default=[],
-    key="players_in_game_multiselect"
+    key="players_in_tonights_game"
 )
 
 # If no players selected, stop here
 if not players_in_game:
-    st.info("Select players in the game to begin logging a hand.")
+    st.info("Select players in tonight's game to begin logging a hand.")
     st.stop()
 
 
 # ---------------------------------------------------------
-# UI: Add player
+# Now show the Log Hand fields (only after players selected)
 # ---------------------------------------------------------
-with st.expander("Add Player"):
-    new_player = st.text_input("New Player Name")
-    if st.button("Add Player"):
-        if new_player.strip():
-            add_player(new_player.strip())
-            st.success(f"Added {new_player}")
-            st.rerun()
-
-
-# ---------------------------------------------------------
-# UI: Log a hand (only shown once players selected)
-# ---------------------------------------------------------
-st.header("Log a Hand")
-
 col1, col2 = st.columns(2)
 
 with col1:
@@ -131,7 +123,7 @@ all_in = st.checkbox("All-In", key="allin_toggle")
 
 
 # ---------------------------------------------------------
-# Conditional: Showdown Losers (filtered to players_in_game)
+# Conditional: Showdown Losers
 # ---------------------------------------------------------
 showdown_losers = []
 if street == "River" and hand_type != "No Showdown":
@@ -144,7 +136,7 @@ if street == "River" and hand_type != "No Showdown":
 
 
 # ---------------------------------------------------------
-# Conditional: Eliminated Player (filtered to players_in_game)
+# Conditional: Eliminated Player
 # ---------------------------------------------------------
 eliminated_player = None
 if all_in:
@@ -185,6 +177,18 @@ if st.button("Submit Hand", type="primary"):
     supabase.table("hands").insert(data).execute()
     st.success("Hand logged!")
     st.rerun()
+
+
+# ---------------------------------------------------------
+# Add Player (now BELOW Players in Tonight's Game)
+# ---------------------------------------------------------
+with st.expander("Add Player"):
+    new_player = st.text_input("New Player Name")
+    if st.button("Add Player"):
+        if new_player.strip():
+            add_player(new_player.strip())
+            st.success(f"Added {new_player}")
+            st.rerun()
 
 
 # ---------------------------------------------------------

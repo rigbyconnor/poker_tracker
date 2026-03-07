@@ -19,7 +19,7 @@ def load_players():
 def add_player(name):
     supabase.table("players").insert({"name": name}).execute()
 
-# Preloaded core players (added automatically if missing)
+# Preloaded core players
 CORE_PLAYERS = ["Michael L.", "Connor R.", "Devin P.", "Cody R.", "Preston R."]
 
 def ensure_core_players():
@@ -32,37 +32,39 @@ ensure_core_players()
 players = load_players()
 
 # ---------------------------------------------------------
-# UI Helpers
+# UI Helpers — CLICKABLE PILLS
 # ---------------------------------------------------------
-def pill(label, selected):
-    style = (
-        "padding:8px 14px;border-radius:20px;margin:4px;display:inline-block;"
-        "cursor:pointer;font-size:16px;border:1px solid #ccc;"
-    )
-    if selected:
-        style += "background-color:#4CAF50;color:white;border-color:#4CAF50;"
-    else:
-        style += "background-color:#f2f2f2;color:#333;"
-    return f"<span style='{style}'>{label}</span>"
-
 def chip_row(options, selected, multi=False, key_prefix=""):
-    cols = st.columns(1)
-    with cols[0]:
-        for opt in options:
-            clicked = st.button(opt, key=f"{key_prefix}_{opt}")
-            if clicked:
-                if multi:
-                    if opt in selected:
-                        selected.remove(opt)
-                    else:
-                        selected.append(opt)
-                else:
-                    selected.clear()
-                    selected.append(opt)
-        st.markdown(
-            "".join([pill(opt, opt in selected) for opt in options]),
-            unsafe_allow_html=True,
+    st.write("")  # spacing
+    cols = st.columns(len(options))
+
+    for i, opt in enumerate(options):
+        is_selected = opt in selected
+
+        # Style for selected vs unselected
+        style = (
+            "padding:10px 16px;border-radius:20px;margin:4px;font-size:16px;"
+            "border:1px solid #ccc;cursor:pointer;text-align:center;"
         )
+        if is_selected:
+            style += "background-color:#4CAF50;color:white;border-color:#4CAF50;"
+        else:
+            style += "background-color:#f2f2f2;color:#333;"
+
+        # Render pill as a button
+        if cols[i].button(opt, key=f"{key_prefix}_{opt}"):
+            if multi:
+                if opt in selected:
+                    selected.remove(opt)
+                else:
+                    selected.append(opt)
+            else:
+                selected.clear()
+                selected.append(opt)
+
+        # Display pill
+        cols[i].markdown(f"<div style='{style}'>{opt}</div>", unsafe_allow_html=True)
+
     return selected
 
 # ---------------------------------------------------------
@@ -78,7 +80,6 @@ with st.expander("Add Player"):
             st.success(f"Added {new_player}")
             st.rerun()
 
-# Reload players after adding
 players = load_players()
 player_names = [p["name"] for p in players]
 
@@ -167,17 +168,16 @@ if not hands:
     st.info("No hands logged yet.")
 else:
     for h in hands:
-        with st.container():
-            st.markdown(
-                f"""
-                <div style='padding:12px;border-radius:10px;background:#f7f7f7;margin-bottom:10px;'>
-                    <strong>Winner:</strong> {h['winner']}<br>
-                    <strong>Street:</strong> {h['street']}<br>
-                    <strong>Hand:</strong> {h['hand_type']}<br>
-                    <strong>Pot:</strong> {h['pot_size']}<br>
-                    <strong>Game:</strong> {h['game_name']}<br>
-                    <small>{h['created_at']}</small>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        st.markdown(
+            f"""
+            <div style='padding:12px;border-radius:10px;background:#f7f7f7;margin-bottom:10px;'>
+                <strong>Winner:</strong> {h['winner']}<br>
+                <strong>Street:</strong> {h['street']}<br>
+                <strong>Hand:</strong> {h['hand_type']}<br>
+                <strong>Pot:</strong> {h['pot_size']}<br>
+                <strong>Game:</strong> {h['game_name']}<br>
+                <small>{h['created_at']}</small>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )

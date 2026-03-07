@@ -40,53 +40,6 @@ player_names = [p["name"] for p in players]
 
 
 # ---------------------------------------------------------
-# Chip-like helpers (native widgets)
-# ---------------------------------------------------------
-def chip_row_single(label, options, state_key):
-    st.write(f"### {label}")
-    if state_key not in st.session_state:
-        st.session_state[state_key] = None
-
-    selected = st.session_state[state_key]
-
-    cols = st.columns(len(options)) if len(options) <= 4 else st.columns(4)
-
-    for i, opt in enumerate(options):
-        col = cols[i % len(cols)]
-        is_selected = (opt == selected)
-        # D: "green selected, white unselected" – we emulate via label
-        label_text = f"✅ {opt}" if is_selected else opt
-        if col.button(label_text, key=f"{state_key}_{opt}"):
-            selected = opt
-            st.session_state[state_key] = opt
-
-    return selected
-
-
-def chip_row_multi(label, options, state_key):
-    st.write(f"### {label}")
-    if state_key not in st.session_state:
-        st.session_state[state_key] = []
-
-    selected = st.session_state[state_key]
-
-    cols = st.columns(4 if len(options) >= 4 else len(options))
-
-    for i, opt in enumerate(options):
-        col = cols[i % len(cols)]
-        is_selected = opt in selected
-        label_text = f"✅ {opt}" if is_selected else opt
-        if col.button(label_text, key=f"{state_key}_{opt}"):
-            if is_selected:
-                selected = [x for x in selected if x != opt]
-            else:
-                selected = selected + [opt]
-            st.session_state[state_key] = selected
-
-    return selected
-
-
-# ---------------------------------------------------------
 # UI: Add player
 # ---------------------------------------------------------
 st.title("Poker Night Tracker")
@@ -101,38 +54,31 @@ with st.expander("Add Player"):
 
 
 # ---------------------------------------------------------
-# UI: Log a hand
+# UI: Log a hand (FAST native selects)
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
-# Winner (single-select chips)
-winner = chip_row_single("Winner", player_names, "winner_chip")
+winner = st.radio("Winner", player_names, key="winner_radio")
 
-# Street (single-select chips)
 streets = ["Preflop", "Flop", "Turn", "River", "Showdown"]
-street = chip_row_single("Street", streets, "street_chip")
+street = st.radio("Street", streets, key="street_radio")
 
-# Hand type (single-select chips)
 hand_types = [
     "High Card", "Pair", "Two Pair", "Trips", "Straight",
     "Flush", "Full House", "Quads", "Straight Flush"
 ]
-hand_type = chip_row_single("Hand Type", hand_types, "handtype_chip")
+hand_type = st.radio("Hand Type", hand_types, key="handtype_radio")
 
-# Pot size (single-select chips)
 pot_sizes = ["S", "M", "L"]
-pot_size = chip_row_single("Pot Size", pot_sizes, "potsize_chip")
+pot_size = st.radio("Pot Size", pot_sizes, key="potsize_radio")
 
-# Showdown losers (multi-select chips)
-showdown_losers = chip_row_multi("Showdown Losers", player_names, "losers_chip")
+showdown_losers = st.multiselect("Showdown Losers", player_names, key="losers_multi")
 
-# Eliminated player (single-select chips, optional)
-eliminated = chip_row_single("Eliminated Player (optional)", player_names, "elim_chip")
+eliminated = st.selectbox("Eliminated Player (optional)", ["None"] + player_names, key="elim_select")
+eliminated = None if eliminated == "None" else eliminated
 
-# Players in game (multi-select chips)
-players_in_game = chip_row_multi("Players in Game", player_names, "playersingame_chip")
+players_in_game = st.multiselect("Players in Game", player_names, default=player_names, key="playersingame_multi")
 
-# Game name
 game_name = st.text_input("Game Name", value=f"{datetime.now():%B %Y} Poker Night")
 
 
@@ -140,31 +86,22 @@ game_name = st.text_input("Game Name", value=f"{datetime.now():%B %Y} Poker Nigh
 # Submit hand
 # ---------------------------------------------------------
 if st.button("Submit Hand", type="primary"):
-    if not winner:
-        st.error("Select a winner")
-    elif not street:
-        st.error("Select a street")
-    elif not hand_type:
-        st.error("Select a hand type")
-    elif not pot_size:
-        st.error("Select a pot size")
-    else:
-        data = {
-            "hand_number": int(datetime.utcnow().timestamp()),
-            "winner": winner,
-            "street": street,
-            "hand_type": hand_type,
-            "pot_size": pot_size,
-            "all_in": False,
-            "eliminated_player": eliminated if eliminated else None,
-            "showdown_losers": showdown_losers,
-            "players_in_game": players_in_game,
-            "game_name": game_name,
-            "created_at": datetime.utcnow().isoformat(),
-        }
-        supabase.table("hands").insert(data).execute()
-        st.success("Hand logged!")
-        st.rerun()
+    data = {
+        "hand_number": int(datetime.utcnow().timestamp()),
+        "winner": winner,
+        "street": street,
+        "hand_type": hand_type,
+        "pot_size": pot_size,
+        "all_in": False,
+        "eliminated_player": eliminated,
+        "showdown_losers": showdown_losers,
+        "players_in_game": players_in_game,
+        "game_name": game_name,
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    supabase.table("hands").insert(data).execute()
+    st.success("Hand logged!")
+    st.rerun()
 
 
 # ---------------------------------------------------------

@@ -3,7 +3,7 @@ from supabase import create_client
 from datetime import datetime
 
 # ---------------------------------------------------------
-# Supabase Connection
+# Supabase connection
 # ---------------------------------------------------------
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_SERVICE_KEY = st.secrets["SUPABASE_SERVICE_KEY"]
@@ -13,7 +13,7 @@ st.set_page_config(page_title="Poker Night Tracker", layout="centered")
 
 
 # ---------------------------------------------------------
-# Database Helpers
+# Database helpers
 # ---------------------------------------------------------
 def load_players():
     response = supabase.table("players").select("*").order("name").execute()
@@ -40,71 +40,54 @@ player_names = [p["name"] for p in players]
 
 
 # ---------------------------------------------------------
-# CLICKABLE PILL SYSTEM (HTML‑safe, final)
+# Chip-like helpers (native widgets)
 # ---------------------------------------------------------
-def chip_row(label, options, selected, multi=False, key_prefix=""):
+def chip_row_single(label, options, state_key):
     st.write(f"### {label}")
+    if state_key not in st.session_state:
+        st.session_state[state_key] = None
 
-    container = st.container()
+    selected = st.session_state[state_key]
 
-    # Read query params (new Streamlit API)
-    params = dict(st.query_params)
-    clicked = params.get(f"{key_prefix}_clicked", None)
+    cols = st.columns(len(options)) if len(options) <= 4 else st.columns(4)
 
-    # Update selection
-    if clicked in options:
-        if multi:
-            if clicked in selected:
-                selected.remove(clicked)
-            else:
-                selected.append(clicked)
-        else:
-            selected.clear()
-            selected.append(clicked)
+    for i, opt in enumerate(options):
+        col = cols[i % len(cols)]
+        is_selected = (opt == selected)
+        # D: "green selected, white unselected" – we emulate via label
+        label_text = f"✅ {opt}" if is_selected else opt
+        if col.button(label_text, key=f"{state_key}_{opt}"):
+            selected = opt
+            st.session_state[state_key] = opt
 
-        # Clear the click param
-        if f"{key_prefix}_clicked" in st.query_params:
-            st.query_params.pop(f"{key_prefix}_clicked")
+    return selected
 
-    # Build pills
-    html_parts = ["<div style='display:flex;flex-wrap:wrap;gap:6px;'>"]
 
-    for opt in options:
+def chip_row_multi(label, options, state_key):
+    st.write(f"### {label}")
+    if state_key not in st.session_state:
+        st.session_state[state_key] = []
+
+    selected = st.session_state[state_key]
+
+    cols = st.columns(4 if len(options) >= 4 else len(options))
+
+    for i, opt in enumerate(options):
+        col = cols[i % len(cols)]
         is_selected = opt in selected
-
-        bg = "#4CAF50" if is_selected else "#FFFFFF"
-        color = "#FFFFFF" if is_selected else "#555555"
-        shadow = "" if is_selected else "box-shadow:0px 1px 3px rgba(0,0,0,0.15);"
-
-        pill = f"""
-        <a href='?{key_prefix}_clicked={opt}' style='text-decoration:none;'>
-            <div style="
-                background:{bg};
-                color:{color};
-                padding:8px 14px;
-                border-radius:10px;
-                font-size:16px;
-                {shadow}
-                display:inline-block;
-            ">
-                {opt}
-            </div>
-        </a>
-        """
-
-        html_parts.append(pill)
-
-    html_parts.append("</div>")
-    html = "\n".join(html_parts)
-
-    # FORCE HTML RENDERING — this is the key
-    container.markdown(html, unsafe_allow_html=True)
+        label_text = f"✅ {opt}" if is_selected else opt
+        if col.button(label_text, key=f"{state_key}_{opt}"):
+            if is_selected:
+                selected = [x for x in selected if x != opt]
+            else:
+                selected = selected + [opt]
+            st.session_state[state_key] = selected
 
     return selected
 
 
 # ---------------------------------------------------------
-# UI: Add Player
+# UI: Add player
 # ---------------------------------------------------------
 st.title("Poker Night Tracker")
 
@@ -118,50 +101,43 @@ with st.expander("Add Player"):
 
 
 # ---------------------------------------------------------
-# UI: Log a Hand
+# UI: Log a hand
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
-# Winner
-winner = st.session_state.get("winner", [])
-winner = chip_row("Winner", player_names, winner, multi=False, key_prefix="winner")
+# Winner (single-select chips)
+winner = chip_row_single("Winner", player_names, "winner_chip")
 
-# Street
+# Street (single-select chips)
 streets = ["Preflop", "Flop", "Turn", "River", "Showdown"]
-street = st.session_state.get("street", [])
-street = chip_row("Street", streets, street, multi=False, key_prefix="street")
+street = chip_row_single("Street", streets, "street_chip")
 
-# Hand Type
+# Hand type (single-select chips)
 hand_types = [
     "High Card", "Pair", "Two Pair", "Trips", "Straight",
     "Flush", "Full House", "Quads", "Straight Flush"
 ]
-hand_type = st.session_state.get("hand_type", [])
-hand_type = chip_row("Hand Type", hand_types, hand_type, multi=False, key_prefix="handtype")
+hand_type = chip_row_single("Hand Type", hand_types, "handtype_chip")
 
-# Pot Size
+# Pot size (single-select chips)
 pot_sizes = ["S", "M", "L"]
-pot_size = st.session_state.get("pot_size", [])
-pot_size = chip_row("Pot Size", pot_sizes, pot_size, multi=False, key_prefix="potsize")
+pot_size = chip_row_single("Pot Size", pot_sizes, "potsize_chip")
 
-# Showdown Losers
-showdown_losers = st.session_state.get("showdown_losers", [])
-showdown_losers = chip_row("Showdown Losers", player_names, showdown_losers, multi=True, key_prefix="losers")
+# Showdown losers (multi-select chips)
+showdown_losers = chip_row_multi("Showdown Losers", player_names, "losers_chip")
 
-# Eliminated Player
-eliminated = st.session_state.get("eliminated", [])
-eliminated = chip_row("Eliminated Player (optional)", player_names, eliminated, multi=False, key_prefix="elim")
+# Eliminated player (single-select chips, optional)
+eliminated = chip_row_single("Eliminated Player (optional)", player_names, "elim_chip")
 
-# Players in Game
-players_in_game = st.session_state.get("players_in_game", player_names.copy())
-players_in_game = chip_row("Players in Game", player_names, players_in_game, multi=True, key_prefix="playersingame")
+# Players in game (multi-select chips)
+players_in_game = chip_row_multi("Players in Game", player_names, "playersingame_chip")
 
-# Game Name
+# Game name
 game_name = st.text_input("Game Name", value=f"{datetime.now():%B %Y} Poker Night")
 
 
 # ---------------------------------------------------------
-# Submit Hand
+# Submit hand
 # ---------------------------------------------------------
 if st.button("Submit Hand", type="primary"):
     if not winner:
@@ -175,12 +151,12 @@ if st.button("Submit Hand", type="primary"):
     else:
         data = {
             "hand_number": int(datetime.utcnow().timestamp()),
-            "winner": winner[0],
-            "street": street[0],
-            "hand_type": hand_type[0],
-            "pot_size": pot_size[0],
+            "winner": winner,
+            "street": street,
+            "hand_type": hand_type,
+            "pot_size": pot_size,
             "all_in": False,
-            "eliminated_player": eliminated[0] if eliminated else None,
+            "eliminated_player": eliminated if eliminated else None,
             "showdown_losers": showdown_losers,
             "players_in_game": players_in_game,
             "game_name": game_name,
@@ -192,7 +168,7 @@ if st.button("Submit Hand", type="primary"):
 
 
 # ---------------------------------------------------------
-# Hand History
+# Hand history
 # ---------------------------------------------------------
 st.header("Hand History")
 

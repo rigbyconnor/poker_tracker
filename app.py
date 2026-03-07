@@ -63,10 +63,25 @@ def checkbox_grid(label, options, key_prefix, columns=2):
 
 
 # ---------------------------------------------------------
+# Players in Game (first required step)
+# ---------------------------------------------------------
+st.subheader("Players in Game")
+players_in_game = st.multiselect(
+    "Select players in this game:",
+    options=player_names,
+    default=[],
+    key="players_in_game_multiselect"
+)
+
+# If no players selected, stop here
+if not players_in_game:
+    st.info("Select players in the game to begin logging a hand.")
+    st.stop()
+
+
+# ---------------------------------------------------------
 # UI: Add player
 # ---------------------------------------------------------
-st.title("Poker Night Tracker")
-
 with st.expander("Add Player"):
     new_player = st.text_input("New Player Name")
     if st.button("Add Player"):
@@ -74,23 +89,6 @@ with st.expander("Add Player"):
             add_player(new_player.strip())
             st.success(f"Added {new_player}")
             st.rerun()
-
-
-# ---------------------------------------------------------
-# Players in Game (first required step)
-# ---------------------------------------------------------
-with st.expander("Players in Game"):
-    players_in_game = checkbox_grid(
-        "Players in Game",
-        player_names,
-        key_prefix="playersingame",
-        columns=2
-    )
-
-# If no players selected, stop here
-if not players_in_game:
-    st.info("Select players in the game to begin logging a hand.")
-    st.stop()
 
 
 # ---------------------------------------------------------

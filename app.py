@@ -2,74 +2,182 @@ import streamlit as st
 from supabase import create_client
 from datetime import datetime
 
-# Connect to Supabase using Streamlit secrets
+# Connect to Supabase
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_SERVICE_KEY = st.secrets["SUPABASE_SERVICE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 st.set_page_config(page_title="Poker Night Tracker", layout="centered")
 
+# ---------------------------------------------------------
+# Load players from Supabase
+# ---------------------------------------------------------
+def load_players():
+    response = supabase.table("players").select("*").order("name").execute()
+    return response.data if response.data else []
+
+def add_player(name):
+    supabase.table("players").insert({"name": name}).execute()
+
+# Preloaded core players (added automatically if missing)
+CORE_PLAYERS = ["Michael L.", "Connor R.", "Devin P.", "Cody R.", "Preston R."]
+
+def ensure_core_players():
+    existing = [p["name"] for p in load_players()]
+    for name in CORE_PLAYERS:
+        if name not in existing:
+            add_player(name)
+
+ensure_core_players()
+players = load_players()
+
+# ---------------------------------------------------------
+# UI Helpers
+# ---------------------------------------------------------
+def pill(label, selected):
+    style = (
+        "padding:8px 14px;border-radius:20px;margin:4px;display:inline-block;"
+        "cursor:pointer;font-size:16px;border:1px solid #ccc;"
+    )
+    if selected:
+        style += "background-color:#4CAF50;color:white;border-color:#4CAF50;"
+    else:
+        style += "background-color:#f2f2f2;color:#333;"
+    return f"<span style='{style}'>{label}</span>"
+
+def chip_row(options, selected, multi=False, key_prefix=""):
+    cols = st.columns(1)
+    with cols[0]:
+        for opt in options:
+            clicked = st.button(opt, key=f"{key_prefix}_{opt}")
+            if clicked:
+                if multi:
+                    if opt in selected:
+                        selected.remove(opt)
+                    else:
+                        selected.append(opt)
+                else:
+                    selected.clear()
+                    selected.append(opt)
+        st.markdown(
+            "".join([pill(opt, opt in selected) for opt in options]),
+            unsafe_allow_html=True,
+        )
+    return selected
+
+# ---------------------------------------------------------
+# UI: Add Player
+# ---------------------------------------------------------
 st.title("Poker Night Tracker")
 
-# ---------------------------
-# Helper: Insert a hand
-# ---------------------------
-def insert_hand(data):
-    response = supabase.table("hands").insert(data).execute()
-    return response
+with st.expander("Add Player"):
+    new_player = st.text_input("New Player Name")
+    if st.button("Add Player"):
+        if new_player.strip():
+            add_player(new_player.strip())
+            st.success(f"Added {new_player}")
+            st.rerun()
 
+# Reload players after adding
+players = load_players()
+player_names = [p["name"] for p in players]
 
-# ---------------------------
-# Helper: Fetch all hands
-# ---------------------------
-def fetch_hands():
-    response = supabase.table("hands").select("*").order("id", desc=True).execute()
-    return response.data
-
-
-# ---------------------------
-# UI: Log a new hand
-# ---------------------------
+# ---------------------------------------------------------
+# UI: Log a Hand
+# ---------------------------------------------------------
 st.header("Log a Hand")
 
-hand_number = st.number_input("Hand Number", min_value=1, step=1)
-winner = st.text_input("Winner")
-street = st.selectbox("Street", ["Preflop", "Flop", "Turn", "River", "Showdown"])
-hand_type = st.text_input("Hand Type (e.g., Flush, Two Pair)")
-pot_size = st.text_input("Pot Size")
-all_in = st.checkbox("All-In?")
-eliminated_player = st.text_input("Eliminated Player (optional)")
-showdown_losers = st.text_input("Showdown Losers (comma-separated)")
-players_in_game = st.text_input("Players in Game (comma-separated)")
+# Winner
+st.subheader("Winner")
+winner = st.session_state.get("winner", [])
+winner = chip_row(player_names, winner, multi=False, key_prefix="winner")
+
+# Street
+st.subheader("Street")
+streets = ["Preflop", "Flop", "Turn", "River", "Showdown"]
+street = st.session_state.get("street", [])
+street = chip_row(streets, street, multi=False, key_prefix="street")
+
+# Hand Type
+st.subheader("Hand Type")
+hand_types = ["High Card", "Pair", "Two Pair", "Trips", "Straight", "Flush", "Full House", "Quads", "Straight Flush"]
+hand_type = st.session_state.get("hand_type", [])
+hand_type = chip_row(hand_types, hand_type, multi=False, key_prefix="handtype")
+
+# Pot Size
+st.subheader("Pot Size")
+pot_sizes = ["S", "M", "L"]
+pot_size = st.session_state.get("pot_size", [])
+pot_size = chip_row(pot_sizes, pot_size, multi=False, key_prefix="potsize")
+
+# Showdown Losers
+st.subheader("Showdown Losers")
+showdown_losers = st.session_state.get("showdown_losers", [])
+showdown_losers = chip_row(player_names, showdown_losers, multi=True, key_prefix="losers")
+
+# Eliminated Player
+st.subheader("Eliminated Player (optional)")
+eliminated = st.session_state.get("eliminated", [])
+eliminated = chip_row(player_names, eliminated, multi=False, key_prefix="elim")
+
+# Players in Game
+st.subheader("Players in Game")
+players_in_game = st.session_state.get("players_in_game", player_names.copy())
+players_in_game = chip_row(player_names, players_in_game, multi=True, key_prefix="playersingame")
+
+# Game Name
 game_name = st.text_input("Game Name", value=f"{datetime.now():%B %Y} Poker Night")
 
-if st.button("Submit Hand"):
-    data = {
-        "hand_number": hand_number,
-        "winner": winner,
-        "street": street,
-        "hand_type": hand_type,
-        "pot_size": pot_size,
-        "all_in": all_in,
-        "eliminated_player": eliminated_player.split(",") if eliminated_player else None,
-        "showdown_losers": showdown_losers.split(",") if showdown_losers else None,
-        "players_in_game": players_in_game.split(",") if players_in_game else [],
-        "game_name": game_name,
-        "created_at": datetime.utcnow().isoformat()
-    }
+# Submit
+if st.button("Submit Hand", type="primary"):
+    if not winner:
+        st.error("Select a winner")
+    elif not street:
+        st.error("Select a street")
+    elif not hand_type:
+        st.error("Select a hand type")
+    elif not pot_size:
+        st.error("Select a pot size")
+    else:
+        data = {
+            "hand_number": int(datetime.utcnow().timestamp()),
+            "winner": winner[0],
+            "street": street[0],
+            "hand_type": hand_type[0],
+            "pot_size": pot_size[0],
+            "all_in": False,
+            "eliminated_player": eliminated[0] if eliminated else None,
+            "showdown_losers": showdown_losers,
+            "players_in_game": players_in_game,
+            "game_name": game_name,
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        supabase.table("hands").insert(data).execute()
+        st.success("Hand logged!")
+        st.rerun()
 
-    insert_hand(data)
-    st.success("Hand logged successfully!")
-
-
-# ---------------------------
-# UI: Display hand history
-# ---------------------------
+# ---------------------------------------------------------
+# Hand History
+# ---------------------------------------------------------
 st.header("Hand History")
 
-hands = fetch_hands()
+hands = supabase.table("hands").select("*").order("id", desc=True).execute().data
 
 if not hands:
     st.info("No hands logged yet.")
 else:
-    st.dataframe(hands)
+    for h in hands:
+        with st.container():
+            st.markdown(
+                f"""
+                <div style='padding:12px;border-radius:10px;background:#f7f7f7;margin-bottom:10px;'>
+                    <strong>Winner:</strong> {h['winner']}<br>
+                    <strong>Street:</strong> {h['street']}<br>
+                    <strong>Hand:</strong> {h['hand_type']}<br>
+                    <strong>Pot:</strong> {h['pot_size']}<br>
+                    <strong>Game:</strong> {h['game_name']}<br>
+                    <small>{h['created_at']}</small>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )

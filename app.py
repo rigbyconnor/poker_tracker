@@ -40,7 +40,7 @@ player_names = [p["name"] for p in players]
 
 
 # ---------------------------------------------------------
-# CLICKABLE PILL SYSTEM (Final Version)
+# CLICKABLE PILL SYSTEM (HTML‑safe, final)
 # ---------------------------------------------------------
 def chip_row(label, options, selected, multi=False, key_prefix=""):
     st.write(f"### {label}")
@@ -66,8 +66,8 @@ def chip_row(label, options, selected, multi=False, key_prefix=""):
         if f"{key_prefix}_clicked" in st.query_params:
             st.query_params.pop(f"{key_prefix}_clicked")
 
-    # Render pills
-    html = "<div style='display:flex;flex-wrap:wrap;gap:6px;'>"
+    # Build pills
+    html_parts = ["<div style='display:flex;flex-wrap:wrap;gap:6px;'>"]
 
     for opt in options:
         is_selected = opt in selected
@@ -76,7 +76,7 @@ def chip_row(label, options, selected, multi=False, key_prefix=""):
         color = "#FFFFFF" if is_selected else "#555555"
         shadow = "" if is_selected else "box-shadow:0px 1px 3px rgba(0,0,0,0.15);"
 
-        html += f"""
+        pill = f"""
         <a href='?{key_prefix}_clicked={opt}' style='text-decoration:none;'>
             <div style="
                 background:{bg};
@@ -85,14 +85,19 @@ def chip_row(label, options, selected, multi=False, key_prefix=""):
                 border-radius:10px;
                 font-size:16px;
                 {shadow}
+                display:inline-block;
             ">
                 {opt}
             </div>
         </a>
         """
 
-    html += "</div>"
+        html_parts.append(pill)
 
+    html_parts.append("</div>")
+    html = "\n".join(html_parts)
+
+    # FORCE HTML RENDERING — this is the key
     container.markdown(html, unsafe_allow_html=True)
 
     return selected

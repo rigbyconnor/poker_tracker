@@ -40,6 +40,29 @@ player_names = [p["name"] for p in players]
 
 
 # ---------------------------------------------------------
+# Checkbox grid helper
+# ---------------------------------------------------------
+def checkbox_grid(label, options, key_prefix, columns=2):
+    st.write(f"### {label}")
+    selected = []
+
+    rows = (len(options) + columns - 1) // columns
+    idx = 0
+
+    for r in range(rows):
+        cols = st.columns(columns)
+        for c in range(columns):
+            if idx < len(options):
+                name = options[idx]
+                checked = cols[c].checkbox(name, key=f"{key_prefix}_{name}")
+                if checked:
+                    selected.append(name)
+                idx += 1
+
+    return selected
+
+
+# ---------------------------------------------------------
 # UI: Add player
 # ---------------------------------------------------------
 st.title("Poker Night Tracker")
@@ -54,41 +77,92 @@ with st.expander("Add Player"):
 
 
 # ---------------------------------------------------------
-# UI: Log a hand (polished native layout)
+# UI: Log a hand (compact layout)
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
-with st.container():
+col1, col2 = st.columns(2)
+
+with col1:
     st.subheader("Winner")
     winner = st.radio("", player_names, key="winner_radio")
 
+with col2:
     st.subheader("Street")
-    streets = ["Preflop", "Flop", "Turn", "River", "Showdown"]
+    streets = ["Preflop", "Flop", "Turn", "River"]
     street = st.radio("", streets, key="street_radio")
 
+col3, col4 = st.columns(2)
+
+with col3:
     st.subheader("Hand Type")
     hand_types = [
         "High Card", "Pair", "Two Pair", "Trips", "Straight",
-        "Flush", "Full House", "Quads", "Straight Flush"
+        "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
     ]
     hand_type = st.radio("", hand_types, key="handtype_radio")
 
+with col4:
     st.subheader("Pot Size")
     pot_sizes = ["S", "M", "L"]
     pot_size = st.radio("", pot_sizes, key="potsize_radio")
 
-    st.subheader("Showdown Losers")
-    showdown_losers = st.multiselect("", player_names, key="losers_multi")
 
-    st.subheader("Eliminated Player (optional)")
-    eliminated = st.selectbox("", ["None"] + player_names, key="elim_select")
-    eliminated = None if eliminated == "None" else eliminated
+# ---------------------------------------------------------
+# All-In toggle
+# ---------------------------------------------------------
+st.subheader("All-In")
+all_in = st.checkbox("All-In", key="allin_toggle")
 
-    st.subheader("Players in Game")
-    players_in_game = st.multiselect("", player_names, default=player_names, key="playersingame_multi")
 
-    st.subheader("Game Name")
-    game_name = st.text_input("", value=f"{datetime.now():%B %Y} Poker Night")
+# ---------------------------------------------------------
+# Conditional: Showdown Losers
+# ---------------------------------------------------------
+showdown_losers = []
+if street == "River" and hand_type != "No Showdown" and not all_in:
+    showdown_losers = checkbox_grid(
+        "Showdown Losers",
+        player_names,
+        key_prefix="losers",
+        columns=2
+    )
+
+
+# ---------------------------------------------------------
+# Conditional: Eliminated Player
+# ---------------------------------------------------------
+eliminated_player = None
+if all_in:
+    eliminated_list = checkbox_grid(
+        "Eliminated Player",
+        player_names,
+        key_prefix="elim",
+        columns=2
+    )
+    # Only allow one eliminated player
+    if len(eliminated_list) > 0:
+        eliminated_player = eliminated_list[0]
+
+
+# ---------------------------------------------------------
+# Players in Game
+# ---------------------------------------------------------
+with st.expander("Players in Game"):
+    players_in_game = checkbox_grid(
+        "Players in Game",
+        player_names,
+        key_prefix="playersingame",
+        columns=2
+    )
+    if not players_in_game:
+        players_in_game = player_names  # fallback
+
+
+# ---------------------------------------------------------
+# Game Name
+# ---------------------------------------------------------
+st.subheader("Game Name")
+game_name = st.text_input("", value=f"{datetime.now():%B %Y} Poker Night")
 
 
 # ---------------------------------------------------------
@@ -101,8 +175,8 @@ if st.button("Submit Hand", type="primary"):
         "street": street,
         "hand_type": hand_type,
         "pot_size": pot_size,
-        "all_in": False,
-        "eliminated_player": eliminated,
+        "all_in": all_in,
+        "eliminated_player": eliminated_player,
         "showdown_losers": showdown_losers,
         "players_in_game": players_in_game,
         "game_name": game_name,
@@ -131,6 +205,9 @@ else:
                 <strong>Street:</strong> {h['street']}<br>
                 <strong>Hand:</strong> {h['hand_type']}<br>
                 <strong>Pot:</strong> {h['pot_size']}<br>
+                <strong>All-In:</strong> {h['all_in']}<br>
+                <strong>Eliminated:</strong> {h['eliminated_player']}<br>
+                <strong>Showdown Losers:</strong> {h['showdown_losers']}<br>
                 <strong>Game:</strong> {h['game_name']}<br>
                 <small>{h['created_at']}</small>
             </div>

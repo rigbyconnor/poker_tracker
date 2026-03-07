@@ -11,23 +11,6 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 st.set_page_config(page_title="Poker Night Tracker", layout="centered")
 
-# ---------------------------------------------------------
-# Tighten spacing above radios + checkboxes
-# ---------------------------------------------------------
-st.markdown("""
-<style>
-/* Remove top padding above radio groups */
-div[data-baseweb="radio"] {
-    margin-top: -12px;
-}
-
-/* Remove top padding above checkboxes */
-div[data-baseweb="checkbox"] {
-    margin-top: -8px;
-}
-</style>
-""", unsafe_allow_html=True)
-
 
 # ---------------------------------------------------------
 # Database helpers
@@ -57,7 +40,7 @@ player_names = [p["name"] for p in players]
 
 
 # ---------------------------------------------------------
-# Checkbox grid helper (tight spacing)
+# Checkbox grid helper
 # ---------------------------------------------------------
 def checkbox_grid(label, options, key_prefix, columns=2):
     st.markdown(f"**{label}**")
@@ -94,7 +77,7 @@ with st.expander("Add Player"):
 
 
 # ---------------------------------------------------------
-# UI: Log a hand (compact layout)
+# UI: Log a hand
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
@@ -133,7 +116,7 @@ all_in = st.checkbox("All-In", key="allin_toggle")
 
 
 # ---------------------------------------------------------
-# Conditional: Showdown Losers (independent of All-In)
+# Conditional: Showdown Losers
 # ---------------------------------------------------------
 showdown_losers = []
 if street == "River" and hand_type != "No Showdown":
@@ -146,7 +129,7 @@ if street == "River" and hand_type != "No Showdown":
 
 
 # ---------------------------------------------------------
-# Conditional: Eliminated Player (depends only on All-In)
+# Conditional: Eliminated Player
 # ---------------------------------------------------------
 eliminated_player = None
 if all_in:
@@ -171,7 +154,7 @@ with st.expander("Players in Game"):
         columns=2
     )
     if not players_in_game:
-        players_in_game = player_names  # fallback
+        players_in_game = player_names
 
 
 # ---------------------------------------------------------

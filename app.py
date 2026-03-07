@@ -43,7 +43,7 @@ player_names = [p["name"] for p in players]
 # Checkbox grid helper
 # ---------------------------------------------------------
 def checkbox_grid(label, options, key_prefix, columns=2):
-    st.markdown(f"**{label}**")
+    st.write(f"### {label}")
     selected = []
 
     rows = (len(options) + columns - 1) // columns
@@ -77,25 +77,25 @@ with st.expander("Add Player"):
 
 
 # ---------------------------------------------------------
-# UI: Log a hand
+# UI: Log a hand (compact layout)
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("**Winner**")
+    st.subheader("Winner")
     winner = st.radio("", player_names, key="winner_radio")
 
 with col2:
-    st.markdown("**Street**")
+    st.subheader("Street")
     streets = ["Preflop", "Flop", "Turn", "River"]
     street = st.radio("", streets, key="street_radio")
 
 col3, col4 = st.columns(2)
 
 with col3:
-    st.markdown("**Hand Type**")
+    st.subheader("Hand Type")
     hand_types = [
         "High Card", "Pair", "Two Pair", "Trips", "Straight",
         "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
@@ -103,7 +103,7 @@ with col3:
     hand_type = st.radio("", hand_types, key="handtype_radio")
 
 with col4:
-    st.markdown("**Pot Size**")
+    st.subheader("Pot Size")
     pot_sizes = ["S", "M", "L"]
     pot_size = st.radio("", pot_sizes, key="potsize_radio")
 
@@ -111,12 +111,12 @@ with col4:
 # ---------------------------------------------------------
 # All-In toggle
 # ---------------------------------------------------------
-st.markdown("**All-In**")
+st.subheader("All-In")
 all_in = st.checkbox("All-In", key="allin_toggle")
 
 
 # ---------------------------------------------------------
-# Conditional: Showdown Losers
+# Conditional: Showdown Losers (independent of All-In)
 # ---------------------------------------------------------
 showdown_losers = []
 if street == "River" and hand_type != "No Showdown":
@@ -129,7 +129,7 @@ if street == "River" and hand_type != "No Showdown":
 
 
 # ---------------------------------------------------------
-# Conditional: Eliminated Player
+# Conditional: Eliminated Player (depends only on All-In)
 # ---------------------------------------------------------
 eliminated_player = None
 if all_in:
@@ -154,13 +154,13 @@ with st.expander("Players in Game"):
         columns=2
     )
     if not players_in_game:
-        players_in_game = player_names
+        players_in_game = player_names  # fallback
 
 
 # ---------------------------------------------------------
 # Game Name
 # ---------------------------------------------------------
-st.markdown("**Game Name**")
+st.subheader("Game Name")
 game_name = st.text_input("", value=f"{datetime.now():%B %Y} Poker Night")
 
 

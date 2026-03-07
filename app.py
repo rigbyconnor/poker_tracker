@@ -11,6 +11,23 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 st.set_page_config(page_title="Poker Night Tracker", layout="centered")
 
+# ---------------------------------------------------------
+# Tighten spacing above radios + checkboxes
+# ---------------------------------------------------------
+st.markdown("""
+<style>
+/* Remove top padding above radio groups */
+div[data-baseweb="radio"] {
+    margin-top: -12px;
+}
+
+/* Remove top padding above checkboxes */
+div[data-baseweb="checkbox"] {
+    margin-top: -8px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 # ---------------------------------------------------------
 # Database helpers

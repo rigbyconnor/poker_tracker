@@ -49,7 +49,7 @@ def checkbox_grid(label, options, key_prefix, columns=2):
     rows = (len(options) + columns - 1) // columns
     idx = 0
 
-    for r in range(rows):
+    for _ in range(rows):
         cols = st.columns(columns)
         for c in range(columns):
             if idx < len(options):
@@ -116,10 +116,10 @@ all_in = st.checkbox("All-In", key="allin_toggle")
 
 
 # ---------------------------------------------------------
-# Conditional: Showdown Losers
+# Conditional: Showdown Losers (independent of All-In)
 # ---------------------------------------------------------
 showdown_losers = []
-if street == "River" and hand_type != "No Showdown" and not all_in:
+if street == "River" and hand_type != "No Showdown":
     showdown_losers = checkbox_grid(
         "Showdown Losers",
         player_names,
@@ -129,7 +129,7 @@ if street == "River" and hand_type != "No Showdown" and not all_in:
 
 
 # ---------------------------------------------------------
-# Conditional: Eliminated Player
+# Conditional: Eliminated Player (depends only on All-In)
 # ---------------------------------------------------------
 eliminated_player = None
 if all_in:
@@ -139,7 +139,6 @@ if all_in:
         key_prefix="elim",
         columns=2
     )
-    # Only allow one eliminated player
     if len(eliminated_list) > 0:
         eliminated_player = eliminated_list[0]
 

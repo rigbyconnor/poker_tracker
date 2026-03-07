@@ -40,52 +40,6 @@ player_names = [p["name"] for p in players]
 
 
 # ---------------------------------------------------------
-# CHIP HELPERS
-# ---------------------------------------------------------
-
-def chip_single(label, options, key):
-    """Single-select chip row using segmented control."""
-    st.write(f"### {label}")
-    return st.segmented_control(
-        key=key,
-        options=options,
-        selection_mode="single"
-    )
-
-
-def chip_multi(label, options, key):
-    """Multi-select chip row using fast toggle buttons."""
-    st.write(f"### {label}")
-
-    if key not in st.session_state:
-        st.session_state[key] = []
-
-    selected = st.session_state[key]
-
-    cols = st.columns(4)
-
-    for i, opt in enumerate(options):
-        col = cols[i % 4]
-        is_selected = opt in selected
-
-        # Slightly rounded rectangle chip look
-        style = (
-            "background-color:#4CAF50;color:white;border-radius:8px;padding:6px 12px;"
-            if is_selected else
-            "background-color:#EEEEEE;color:#333;border-radius:8px;padding:6px 12px;"
-        )
-
-        if col.button(opt, key=f"{key}_{opt}", help="", use_container_width=True):
-            if is_selected:
-                selected = [x for x in selected if x != opt]
-            else:
-                selected = selected + [opt]
-            st.session_state[key] = selected
-
-    return selected
-
-
-# ---------------------------------------------------------
 # UI: Add player
 # ---------------------------------------------------------
 st.title("Poker Night Tracker")
@@ -100,32 +54,41 @@ with st.expander("Add Player"):
 
 
 # ---------------------------------------------------------
-# UI: Log a hand (CHIP UI)
+# UI: Log a hand (polished native layout)
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
-winner = chip_single("Winner", player_names, "winner_chip")
+with st.container():
+    st.subheader("Winner")
+    winner = st.radio("", player_names, key="winner_radio")
 
-streets = ["Preflop", "Flop", "Turn", "River", "Showdown"]
-street = chip_single("Street", streets, "street_chip")
+    st.subheader("Street")
+    streets = ["Preflop", "Flop", "Turn", "River", "Showdown"]
+    street = st.radio("", streets, key="street_radio")
 
-hand_types = [
-    "High Card", "Pair", "Two Pair", "Trips", "Straight",
-    "Flush", "Full House", "Quads", "Straight Flush"
-]
-hand_type = chip_single("Hand Type", hand_types, "handtype_chip")
+    st.subheader("Hand Type")
+    hand_types = [
+        "High Card", "Pair", "Two Pair", "Trips", "Straight",
+        "Flush", "Full House", "Quads", "Straight Flush"
+    ]
+    hand_type = st.radio("", hand_types, key="handtype_radio")
 
-pot_sizes = ["S", "M", "L"]
-pot_size = chip_single("Pot Size", pot_sizes, "potsize_chip")
+    st.subheader("Pot Size")
+    pot_sizes = ["S", "M", "L"]
+    pot_size = st.radio("", pot_sizes, key="potsize_radio")
 
-showdown_losers = chip_multi("Showdown Losers", player_names, "losers_chip")
+    st.subheader("Showdown Losers")
+    showdown_losers = st.multiselect("", player_names, key="losers_multi")
 
-eliminated = chip_single("Eliminated Player (optional)", ["None"] + player_names, "elim_chip")
-eliminated = None if eliminated == "None" else eliminated
+    st.subheader("Eliminated Player (optional)")
+    eliminated = st.selectbox("", ["None"] + player_names, key="elim_select")
+    eliminated = None if eliminated == "None" else eliminated
 
-players_in_game = chip_multi("Players in Game", player_names, "playersingame_chip")
+    st.subheader("Players in Game")
+    players_in_game = st.multiselect("", player_names, default=player_names, key="playersingame_multi")
 
-game_name = st.text_input("Game Name", value=f"{datetime.now():%B %Y} Poker Night")
+    st.subheader("Game Name")
+    game_name = st.text_input("", value=f"{datetime.now():%B %Y} Poker Night")
 
 
 # ---------------------------------------------------------

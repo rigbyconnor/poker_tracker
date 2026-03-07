@@ -77,7 +77,24 @@ with st.expander("Add Player"):
 
 
 # ---------------------------------------------------------
-# UI: Log a hand (compact layout)
+# Players in Game (first required step)
+# ---------------------------------------------------------
+with st.expander("Players in Game"):
+    players_in_game = checkbox_grid(
+        "Players in Game",
+        player_names,
+        key_prefix="playersingame",
+        columns=2
+    )
+
+# If no players selected, stop here
+if not players_in_game:
+    st.info("Select players in the game to begin logging a hand.")
+    st.stop()
+
+
+# ---------------------------------------------------------
+# UI: Log a hand (only shown once players selected)
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
@@ -85,7 +102,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("Winner")
-    winner = st.radio("", player_names, key="winner_radio")
+    winner = st.radio("", players_in_game, key="winner_radio")
 
 with col2:
     st.subheader("Street")
@@ -116,45 +133,31 @@ all_in = st.checkbox("All-In", key="allin_toggle")
 
 
 # ---------------------------------------------------------
-# Conditional: Showdown Losers (independent of All-In)
+# Conditional: Showdown Losers (filtered to players_in_game)
 # ---------------------------------------------------------
 showdown_losers = []
 if street == "River" and hand_type != "No Showdown":
     showdown_losers = checkbox_grid(
         "Showdown Losers",
-        player_names,
+        players_in_game,
         key_prefix="losers",
         columns=2
     )
 
 
 # ---------------------------------------------------------
-# Conditional: Eliminated Player (depends only on All-In)
+# Conditional: Eliminated Player (filtered to players_in_game)
 # ---------------------------------------------------------
 eliminated_player = None
 if all_in:
     eliminated_list = checkbox_grid(
         "Eliminated Player",
-        player_names,
+        players_in_game,
         key_prefix="elim",
         columns=2
     )
     if len(eliminated_list) > 0:
         eliminated_player = eliminated_list[0]
-
-
-# ---------------------------------------------------------
-# Players in Game
-# ---------------------------------------------------------
-with st.expander("Players in Game"):
-    players_in_game = checkbox_grid(
-        "Players in Game",
-        player_names,
-        key_prefix="playersingame",
-        columns=2
-    )
-    if not players_in_game:
-        players_in_game = player_names  # fallback
 
 
 # ---------------------------------------------------------

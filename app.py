@@ -47,9 +47,9 @@ def chip_row(label, options, selected, multi=False, key_prefix=""):
 
     container = st.container()
 
-    # Read query params
-    params = st.experimental_get_query_params()
-    clicked = params.get(f"{key_prefix}_clicked", [None])[0]
+    # Read query params (new Streamlit API)
+    params = dict(st.query_params)
+    clicked = params.get(f"{key_prefix}_clicked", None)
 
     # Update selection
     if clicked in options:
@@ -62,8 +62,9 @@ def chip_row(label, options, selected, multi=False, key_prefix=""):
             selected.clear()
             selected.append(clicked)
 
-        # Clear params so it doesn't persist
-        st.experimental_set_query_params()
+        # Clear the click param
+        if f"{key_prefix}_clicked" in st.query_params:
+            st.query_params.pop(f"{key_prefix}_clicked")
 
     # Render pills
     html = "<div style='display:flex;flex-wrap:wrap;gap:6px;'>"

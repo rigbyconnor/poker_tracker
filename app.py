@@ -62,9 +62,12 @@ def load_hands_for_session(session_name):
 # ---------------------------------------------------------
 # Checkbox grid helper (session‑namespaced keys)
 # ---------------------------------------------------------
-def checkbox_grid(label, options, key_prefix, session_id, columns=2):
+def checkbox_grid(label, options, key_prefix, session_id, columns=2, prechecked=None):
     st.write(f"### {label}")
     selected = []
+
+    if prechecked is None:
+        prechecked = []
 
     rows = (len(options) + columns - 1) // columns
     idx = 0
@@ -74,8 +77,8 @@ def checkbox_grid(label, options, key_prefix, session_id, columns=2):
         for c in range(columns):
             if idx < len(options):
                 name = options[idx]
-                key = f"{key_prefix}_{session_id}_{name}"
-                checked = cols[c].checkbox(name, key=key)
+                key = f"{key_prefix}_{session_id}_{label}_{name}"
+                checked = cols[c].checkbox(name, key=key, value=(name in prechecked))
                 if checked:
                     selected.append(name)
                 idx += 1
@@ -206,7 +209,7 @@ with st.expander("Edit Session Players"):
 
 
 # ---------------------------------------------------------
-# 2. Determine Alive Players (Option A)
+# 2. Determine Alive Players (for NEW hands)
 # ---------------------------------------------------------
 hands = load_hands_for_session(active_session["name"])
 
@@ -307,7 +310,7 @@ if st.button("Submit Hand", type="primary"):
 
 
 # ---------------------------------------------------------
-# 4. Hand History
+# 4. Hand History (with Edit + Delete)
 # ---------------------------------------------------------
 st.header("Hand History")
 
@@ -321,9 +324,28 @@ else:
 
     st.subheader("Recent Hands")
 
-    for index, h in enumerate(recent_hands):
-        hand_number = total_hands - index
+    # ---------------------------------------------------------
+    # Helper: compute historical alive players for a given hand
+    # ---------------------------------------------------------
+    def get_alive_players_at_hand(target_hand_id):
+        eliminated_before = set()
+        chronological = list(reversed(hands))  # oldest → newest
 
+        for h in chronological:
+            if h["id"] == target_hand_id:
+                break
+            eliminated = h.get("eliminated_player") or []
+            if isinstance(eliminated, str):
+                eliminated = [eliminated]
+            for p in eliminated:
+                eliminated_before.add(p)
+
+        return [p for p in players_in_game if p not in eliminated_before]
+
+    # ---------------------------------------------------------
+    # Render a single hand (with edit/delete)
+    # ---------------------------------------------------------
+    def render_hand(h, hand_number):
         winner = h["winner"]
         street = h["street"]
         hand_type = h["hand_type"]
@@ -332,10 +354,10 @@ else:
         showdown_losers = h.get("showdown_losers") or []
         eliminated = h.get("eliminated_player") or []
 
-        if isinstance(eliminated, str):
-            eliminated = [eliminated]
         if isinstance(showdown_losers, str):
             showdown_losers = [showdown_losers]
+        if isinstance(eliminated, str):
+            eliminated = [eliminated]
 
         line = (
             f"**Hand #{hand_number} — {winner} won with {hand_type} "
@@ -350,36 +372,136 @@ else:
 
         st.write(line)
 
+        # Buttons
+        colA, colB = st.columns([1, 1])
+
+        with colA:
+            if st.button(f"Edit Hand #{hand_number}", key=f"edit_{h['id']}"):
+                st.session_state["editing_hand"] = h["id"]
+
+        with colB:
+            if st.button(f"Delete Hand #{hand_number}", key=f"delete_{h['id']}"):
+                st.session_state["confirm_delete"] = h["id"]
+
+        # Delete confirmation
+        if st.session_state.get("confirm_delete") == h["id"]:
+            st.warning(f"Are you sure you want to delete Hand #{hand_number}?")
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("Yes, Delete", key=f"confirm_delete_yes_{h['id']}"):
+                    supabase.table("hands").delete().eq("id", h["id"]).execute()
+                    st.success("Hand deleted.")
+                    st.session_state["confirm_delete"] = None
+                    st.rerun()
+            with c2:
+                if st.button("Cancel", key=f"confirm_delete_no_{h['id']}"):
+                    st.session_state["confirm_delete"] = None
+
+        # Edit form
+        if st.session_state.get("editing_hand") == h["id"]:
+            with st.expander(f"Editing Hand #{hand_number}", expanded=True):
+
+                # Historical alive players
+                alive_at_time = get_alive_players_at_hand(h["id"])
+
+                # Winner
+                new_winner = st.radio(
+                    "Winner",
+                    alive_at_time,
+                    index=alive_at_time.index(h["winner"]),
+                    key=f"edit_winner_{h['id']}"
+                )
+
+                # Street
+                streets = ["Preflop", "Flop", "Turn", "River"]
+                new_street = st.radio(
+                    "Street",
+                    streets,
+                    index=streets.index(h["street"]),
+                    key=f"edit_street_{h['id']}"
+                )
+
+                # Hand Type
+                hand_types = [
+                    "High Card", "Pair", "Two Pair", "Trips", "Straight",
+                    "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
+                ]
+                new_hand_type = st.radio(
+                    "Hand Type",
+                    hand_types,
+                    index=hand_types.index(h["hand_type"]),
+                    key=f"edit_handtype_{h['id']}"
+                )
+
+                # Pot Size
+                pot_sizes = ["S", "M", "L"]
+                new_pot_size = st.radio(
+                    "Pot Size",
+                    pot_sizes,
+                    index=pot_sizes.index(h["pot_size"]),
+                    key=f"edit_potsize_{h['id']}"
+                )
+
+                # All-In
+                new_all_in = st.checkbox(
+                    "All-In",
+                    value=h["all_in"],
+                    key=f"edit_allin_{h['id']}"
+                )
+
+                # Showdown Losers
+                new_showdown_losers = []
+                if new_street == "River" and new_hand_type != "No Showdown":
+                    loser_options = [p for p in alive_at_time if p != new_winner]
+                    new_showdown_losers = checkbox_grid(
+                        "Showdown Losers",
+                        loser_options,
+                        key_prefix="edit_losers",
+                        session_id=h["id"],
+                        prechecked=h.get("showdown_losers") or []
+                    )
+
+                # Eliminated Players
+                new_eliminated = []
+                if new_all_in:
+                    elim_options = [p for p in alive_at_time if p != new_winner]
+                    new_eliminated = checkbox_grid(
+                        "Eliminated Player(s)",
+                        elim_options,
+                        key_prefix="edit_elim",
+                        session_id=h["id"],
+                        prechecked=h.get("eliminated_player") or []
+                    )
+
+                if st.button("Save Changes", key=f"save_edit_{h['id']}"):
+                    updated = {
+                        "winner": new_winner,
+                        "street": new_street,
+                        "hand_type": new_hand_type,
+                        "pot_size": new_pot_size,
+                        "all_in": new_all_in,
+                        "showdown_losers": new_showdown_losers,
+                        "eliminated_player": new_eliminated,
+                    }
+                    supabase.table("hands").update(updated).eq("id", h["id"]).execute()
+                    st.success("Hand updated.")
+                    st.session_state["editing_hand"] = None
+                    st.rerun()
+
+                if st.button("Cancel Edit", key=f"cancel_edit_{h['id']}"):
+                    st.session_state["editing_hand"] = None
+
+    # Render recent hands
+    for index, h in enumerate(recent_hands):
+        hand_number = total_hands - index
+        render_hand(h, hand_number)
+
+    # Older hands
     if older_hands:
         with st.expander("Show Full Hand History"):
             for idx, h in enumerate(older_hands, start=6):
                 hand_number = total_hands - (idx - 1)
-
-                winner = h["winner"]
-                street = h["street"]
-                hand_type = h["hand_type"]
-                pot_size = h["pot_size"]
-
-                showdown_losers = h.get("showdown_losers") or []
-                eliminated = h.get("eliminated_player") or []
-
-                if isinstance(eliminated, str):
-                    eliminated = [eliminated]
-                if isinstance(showdown_losers, str):
-                    showdown_losers = [showdown_losers]
-
-                line = (
-                    f"**Hand #{hand_number} — {winner} won with {hand_type} "
-                    f"on the {street} (Pot: {pot_size})**"
-                )
-
-                if showdown_losers:
-                    line += f" — Showdown Losers: {', '.join(showdown_losers)}"
-
-                if eliminated:
-                    line += f" — Eliminated: {', '.join(eliminated)}"
-
-                st.write(line)
+                render_hand(h, hand_number)
 
 
 # ---------------------------------------------------------
@@ -434,29 +556,4 @@ with st.expander("Session Leaderboard"):
                 stats[p]["eliminated_hand"] = idx
 
         for p in players_in_game:
-            if p in h["players_in_game"]:
-                if (
-                    p != winner
-                    and p not in showdown_losers
-                    and p not in eliminated
-                ):
-                    stats[p]["folds"] += 1
-
-    st.write("### 🏆 Session Leaderboard")
-
-    leaderboard_rows = []
-    for p in players_in_game:
-        sd_total = stats[p]["sd_total"]
-        sd_win_pct = f"{round((stats[p]['sd_wins'] / sd_total) * 100)}%" if sd_total > 0 else "—"
-        elim = stats[p]["eliminated_hand"] if stats[p]["eliminated_hand"] else "—"
-
-        leaderboard_rows.append({
-            "Player": p,
-            "Wins 🏆": stats[p]["wins"],
-            "SD Win% 👎": sd_win_pct,
-            "Big Pots 💰": stats[p]["big_pots"],
-            "Folds 🪫": stats[p]["folds"],
-            "Eliminated 💀": elim
-        })
-
-    st.dataframe(leaderboard_rows, hide_index=True)
+            if p in h["players_in

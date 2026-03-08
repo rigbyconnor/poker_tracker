@@ -60,9 +60,9 @@ def load_hands_for_session(session_name):
 
 
 # ---------------------------------------------------------
-# Checkbox grid helper
+# Checkbox grid helper (NO KEYS → resets automatically)
 # ---------------------------------------------------------
-def checkbox_grid(label, options, key_prefix, session_id, columns=2):
+def checkbox_grid(label, options, columns=2):
     st.write(f"### {label}")
     selected = []
 
@@ -74,8 +74,7 @@ def checkbox_grid(label, options, key_prefix, session_id, columns=2):
         for c in range(columns):
             if idx < len(options):
                 name = options[idx]
-                # NO KEY → resets automatically
-                checked = cols[c].checkbox(name)
+                checked = cols[c].checkbox(name)  # NO KEY
                 if checked:
                     selected.append(name)
                 idx += 1
@@ -182,7 +181,7 @@ with st.expander("Edit Session Players"):
 
 
 # ---------------------------------------------------------
-# 2. Log a Hand (NO KEYS → auto-reset)
+# 2. Log a Hand (NO KEYS ANYWHERE → resets automatically)
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
@@ -190,9 +189,8 @@ if not active_session:
     st.info("Select or create a session to begin.")
     st.stop()
 
-if not players_in_game:
-    st.info("This session has no players. Edit the session to add players.")
-else:
+with st.form("hand_form"):
+
     col1, col2 = st.columns(2)
 
     with col1:
@@ -227,8 +225,6 @@ else:
         showdown_losers = checkbox_grid(
             "Showdown Losers",
             players_in_game,
-            key_prefix="losers",
-            session_id=active_session["id"],
             columns=2
         )
 
@@ -237,14 +233,14 @@ else:
         eliminated_list = checkbox_grid(
             "Eliminated Player",
             players_in_game,
-            key_prefix="elim",
-            session_id=active_session["id"],
             columns=2
         )
         if len(eliminated_list) > 0:
             eliminated_player = eliminated_list[0]
 
-    if st.button("Submit Hand", type="primary"):
+    submitted = st.form_submit_button("Submit Hand")
+
+    if submitted:
         data = {
             "hand_number": int(datetime.utcnow().timestamp()),
             "winner": winner,

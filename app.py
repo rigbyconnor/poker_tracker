@@ -1,6 +1,7 @@
 import streamlit as st
 from supabase import create_client
 from datetime import datetime
+import json
 
 # ---------------------------------------------------------
 # Supabase connection
@@ -40,7 +41,7 @@ def create_session(name, players):
         .insert({"name": name, "players": players})
         .execute()
     )
-    return response.data[0]  # return created session row
+    return response.data[0]
 
 
 def update_session_players(session_id, players):
@@ -59,9 +60,9 @@ def load_hands_for_session(session_name):
 
 
 # ---------------------------------------------------------
-# Checkbox grid helper
+# Checkbox grid helper (now session‑namespaced keys)
 # ---------------------------------------------------------
-def checkbox_grid(label, options, key_prefix, columns=2):
+def checkbox_grid(label, options, key_prefix, session_id, columns=2):
     st.write(f"### {label}")
     selected = []
 
@@ -73,7 +74,8 @@ def checkbox_grid(label, options, key_prefix, columns=2):
         for c in range(columns):
             if idx < len(options):
                 name = options[idx]
-                checked = cols[c].checkbox(name, key=f"{key_prefix}_{name}")
+                key = f"{key_prefix}_{session_id}_{name}"
+                checked = cols[c].checkbox(name, key=key)
                 if checked:
                     selected.append(name)
                 idx += 1
@@ -90,7 +92,6 @@ player_names = [p["name"] for p in players]
 sessions = load_sessions()
 session_names = [s["name"] for s in sessions]
 
-# Add "Create New Session…" option
 CREATE_NEW = "➕ Create New Session…"
 session_dropdown_options = session_names + [CREATE_NEW]
 
@@ -106,12 +107,14 @@ if "active_session_id" not in st.session_state:
 # 1. Session Selector
 # ---------------------------------------------------------
 st.title("Poker Night Tracker")
-
 st.subheader("Select Game Session")
 
 # Determine default selection
 if st.session_state["active_session_id"]:
-    active_session = next((s for s in sessions if s["id"] == st.session_state["active_session_id"]), None)
+    active_session = next(
+        (s for s in sessions if s["id"] == st.session_state["active_session_id"]),
+        None
+    )
     default_name = active_session["name"] if active_session else None
 else:
     default_name = None
@@ -119,7 +122,8 @@ else:
 selected_session_name = st.selectbox(
     "Game Session",
     session_dropdown_options,
-    index=session_dropdown_options.index(default_name) if default_name in session_dropdown_options else 0,
+    index=session_dropdown_options.index(default_name)
+    if default_name in session_dropdown_options else 0,
 )
 
 
@@ -129,7 +133,6 @@ selected_session_name = st.selectbox(
 if selected_session_name == CREATE_NEW:
     st.subheader("Create New Session")
 
-    # Auto-suggest name
     suggested_name = f"{datetime.now():%B %Y} Poker Night"
     new_session_name = st.text_input("Session Name", value=suggested_name)
 
@@ -145,7 +148,7 @@ if selected_session_name == CREATE_NEW:
             st.success("Session created!")
             st.rerun()
 
-    st.stop()  # Stop here until session is created
+    st.stop()
 
 
 # ---------------------------------------------------------
@@ -155,7 +158,9 @@ active_session = next((s for s in sessions if s["name"] == selected_session_name
 
 if active_session:
     st.session_state["active_session_id"] = active_session["id"]
-    players_in_game = active_session["players"]
+
+    raw_players = active_session["players"]
+    players_in_game = raw_players if isinstance(raw_players, list) else json.loads(raw_players)
 else:
     players_in_game = []
 
@@ -176,12 +181,12 @@ else:
 
     with col1:
         st.subheader("Winner")
-        winner = st.radio("", players_in_game, key="winner_radio")
+        winner = st.radio("", players_in_game, key=f"winner_radio_{active_session['id']}")
 
     with col2:
         st.subheader("Street")
         streets = ["Preflop", "Flop", "Turn", "River"]
-        street = st.radio("", streets, key="street_radio")
+        street = st.radio("", streets, key=f"street_radio_{active_session['id']}")
 
     col3, col4 = st.columns(2)
 
@@ -191,15 +196,15 @@ else:
             "High Card", "Pair", "Two Pair", "Trips", "Straight",
             "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
         ]
-        hand_type = st.radio("", hand_types, key="handtype_radio")
+        hand_type = st.radio("", hand_types, key=f"handtype_radio_{active_session['id']}")
 
     with col4:
         st.subheader("Pot Size")
         pot_sizes = ["S", "M", "L"]
-        pot_size = st.radio("", pot_sizes, key="potsize_radio")
+        pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}")
 
     st.subheader("All-In")
-    all_in = st.checkbox("All-In", key="allin_toggle")
+    all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}")
 
     showdown_losers = []
     if street == "River" and hand_type != "No Showdown":
@@ -207,6 +212,7 @@ else:
             "Showdown Losers",
             players_in_game,
             key_prefix="losers",
+            session_id=active_session["id"],
             columns=2
         )
 
@@ -216,6 +222,7 @@ else:
             "Eliminated Player",
             players_in_game,
             key_prefix="elim",
+            session_id=active_session["id"],
             columns=2
         )
         if len(eliminated_list) > 0:

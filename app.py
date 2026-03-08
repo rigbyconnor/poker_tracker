@@ -60,7 +60,7 @@ def load_hands_for_session(session_name):
 
 
 # ---------------------------------------------------------
-# Checkbox grid helper (now session‑namespaced keys)
+# Checkbox grid helper (session‑namespaced keys)
 # ---------------------------------------------------------
 def checkbox_grid(label, options, key_prefix, session_id, columns=2):
     st.write(f"### {label}")

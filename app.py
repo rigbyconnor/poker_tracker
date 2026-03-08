@@ -69,7 +69,8 @@ st.title("Poker Night Tracker")
 st.header("Log a Hand")
 
 # ---------------------------------------------------------
-# Players in Tonight's Game (collapsible dropdown BELOW Log Hand)
+# Players in Tonight's Game (we load it early for logic,
+# but we will DISPLAY it later, below Hand History)
 # ---------------------------------------------------------
 with st.expander("Players in Tonight's Game"):
     players_in_game = st.multiselect(
@@ -183,6 +184,20 @@ else:
             """,
             unsafe_allow_html=True,
         )
+
+
+# ---------------------------------------------------------
+# DISPLAY the Players dropdown BELOW Hand History
+# (the logic already ran above)
+# ---------------------------------------------------------
+st.markdown("### Players in Tonight's Game")
+with st.expander("Players in Tonight's Game"):
+    st.multiselect(
+        "Select players in tonight's game:",
+        options=player_names,
+        default=players_in_game,
+        key="players_in_tonights_game_display"
+    )
 
 
 # ---------------------------------------------------------

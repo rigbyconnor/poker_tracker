@@ -194,16 +194,18 @@ if not active_session:
 if not players_in_game:
     st.info("This session has no players. Edit the session to add players.")
 else:
+    sid = str(active_session["id"])
+
     col1, col2 = st.columns(2)
 
     with col1:
         st.subheader("Winner")
-        winner = st.radio("", players_in_game, key=f"winner_radio_{active_session['id']}")
+        winner = st.radio("", players_in_game, key=f"winner_radio_{sid}")
 
     with col2:
         st.subheader("Street")
         streets = ["Preflop", "Flop", "Turn", "River"]
-        street = st.radio("", streets, key=f"street_radio_{active_session['id']}")
+        street = st.radio("", streets, key=f"street_radio_{sid}")
 
     col3, col4 = st.columns(2)
 
@@ -213,15 +215,15 @@ else:
             "High Card", "Pair", "Two Pair", "Trips", "Straight",
             "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
         ]
-        hand_type = st.radio("", hand_types, key=f"handtype_radio_{active_session['id']}")
+        hand_type = st.radio("", hand_types, key=f"handtype_radio_{sid}")
 
     with col4:
         st.subheader("Pot Size")
         pot_sizes = ["S", "M", "L"]
-        pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}")
+        pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{sid}")
 
     st.subheader("All-In")
-    all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}")
+    all_in = st.checkbox("All-In", key=f"allin_toggle_{sid}")
 
     showdown_losers = []
     if street == "River" and hand_type != "No Showdown":
@@ -229,7 +231,7 @@ else:
             "Showdown Losers",
             players_in_game,
             key_prefix="losers",
-            session_id=active_session["id"],
+            session_id=sid,
             columns=2
         )
 
@@ -239,7 +241,7 @@ else:
             "Eliminated Player",
             players_in_game,
             key_prefix="elim",
-            session_id=active_session["id"],
+            session_id=sid,
             columns=2
         )
         if len(eliminated_list) > 0:
@@ -264,9 +266,20 @@ else:
         # ---------------------------------------------------------
         # RESET ALL FORM FIELDS FOR THIS SESSION
         # ---------------------------------------------------------
-        sid = active_session["id"]
-        for key in list(st.session_state.keys()):
-            if str(sid) in key:  # only clear keys for this session
+        keys_to_clear = [
+            f"winner_radio_{sid}",
+            f"street_radio_{sid}",
+            f"handtype_radio_{sid}",
+            f"potsize_radio_{sid}",
+            f"allin_toggle_{sid}",
+        ]
+
+        for player in players_in_game:
+            keys_to_clear.append(f"losers_{sid}_{player}")
+            keys_to_clear.append(f"elim_{sid}_{player}")
+
+        for key in keys_to_clear:
+            if key in st.session_state:
                 del st.session_state[key]
 
         st.success("Hand logged!")

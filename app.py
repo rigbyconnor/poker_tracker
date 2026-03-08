@@ -70,9 +70,16 @@ st.header("Log a Hand")
 
 
 # ---------------------------------------------------------
-# Read players from session state (NO hidden widget)
+# Hidden logic dropdown (runs early, invisible)
 # ---------------------------------------------------------
-players_in_game = st.session_state.get("players_in_tonights_game", [])
+st.multiselect(
+    "Players in Tonight's Game (hidden)",
+    options=player_names,
+    key="players_in_tonights_game",
+    label_visibility="collapsed"
+)
+
+players_in_game = st.session_state["players_in_tonights_game"]
 
 
 # ---------------------------------------------------------

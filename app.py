@@ -60,9 +60,9 @@ def load_hands_for_session(session_name):
 
 
 # ---------------------------------------------------------
-# Checkbox grid helper (NO KEYS → resets automatically)
+# Checkbox grid helper (session‑namespaced keys)
 # ---------------------------------------------------------
-def checkbox_grid(label, options, columns=2):
+def checkbox_grid(label, options, key_prefix, session_id, columns=2):
     st.write(f"### {label}")
     selected = []
 
@@ -74,7 +74,8 @@ def checkbox_grid(label, options, columns=2):
         for c in range(columns):
             if idx < len(options):
                 name = options[idx]
-                checked = cols[c].checkbox(name)  # NO KEY
+                key = f"{key_prefix}_{session_id}_{name}"
+                checked = cols[c].checkbox(name, key=key)
                 if checked:
                     selected.append(name)
                 idx += 1
@@ -172,16 +173,17 @@ with st.expander("Edit Session Players"):
         "Players in this session:",
         options=player_names,
         default=players_in_game,
+        key=f"edit_players_{active_session['id']}"
     )
 
-    if st.button("Save Session Players"):
+    if st.button("Save Session Players", key=f"save_players_{active_session['id']}"):
         update_session_players(active_session["id"], edited_players)
         st.success("Session players updated!")
         st.rerun()
 
 
 # ---------------------------------------------------------
-# 2. Log a Hand (NO KEYS ANYWHERE → resets automatically)
+# 2. Log a Hand
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
@@ -189,18 +191,19 @@ if not active_session:
     st.info("Select or create a session to begin.")
     st.stop()
 
-with st.form("hand_form"):
-
+if not players_in_game:
+    st.info("This session has no players. Edit the session to add players.")
+else:
     col1, col2 = st.columns(2)
 
     with col1:
         st.subheader("Winner")
-        winner = st.radio("", players_in_game)
+        winner = st.radio("", players_in_game, key=f"winner_radio_{active_session['id']}")
 
     with col2:
         st.subheader("Street")
         streets = ["Preflop", "Flop", "Turn", "River"]
-        street = st.radio("", streets)
+        street = st.radio("", streets, key=f"street_radio_{active_session['id']}")
 
     col3, col4 = st.columns(2)
 
@@ -210,21 +213,23 @@ with st.form("hand_form"):
             "High Card", "Pair", "Two Pair", "Trips", "Straight",
             "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
         ]
-        hand_type = st.radio("", hand_types)
+        hand_type = st.radio("", hand_types, key=f"handtype_radio_{active_session['id']}")
 
     with col4:
         st.subheader("Pot Size")
         pot_sizes = ["S", "M", "L"]
-        pot_size = st.radio("", pot_sizes)
+        pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}")
 
     st.subheader("All-In")
-    all_in = st.checkbox("All-In")
+    all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}")
 
     showdown_losers = []
     if street == "River" and hand_type != "No Showdown":
         showdown_losers = checkbox_grid(
             "Showdown Losers",
             players_in_game,
+            key_prefix="losers",
+            session_id=active_session["id"],
             columns=2
         )
 
@@ -233,14 +238,14 @@ with st.form("hand_form"):
         eliminated_list = checkbox_grid(
             "Eliminated Player",
             players_in_game,
+            key_prefix="elim",
+            session_id=active_session["id"],
             columns=2
         )
         if len(eliminated_list) > 0:
             eliminated_player = eliminated_list[0]
 
-    submitted = st.form_submit_button("Submit Hand")
-
-    if submitted:
+    if st.button("Submit Hand", type="primary"):
         data = {
             "hand_number": int(datetime.utcnow().timestamp()),
             "winner": winner,
@@ -255,7 +260,6 @@ with st.form("hand_form"):
             "created_at": datetime.utcnow().isoformat(),
         }
         supabase.table("hands").insert(data).execute()
-
         st.success("Hand logged!")
         st.rerun()
 

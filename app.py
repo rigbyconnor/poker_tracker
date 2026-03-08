@@ -166,9 +166,11 @@ else:
 
 
 # ---------------------------------------------------------
-# Edit Session Players
+# Edit Session Players (NOW INCLUDES ADD PLAYER)
 # ---------------------------------------------------------
 with st.expander("Edit Session Players"):
+
+    # Current players in this session
     edited_players = st.multiselect(
         "Players in this session:",
         options=player_names,
@@ -176,6 +178,21 @@ with st.expander("Edit Session Players"):
         key=f"edit_players_{active_session['id']}"
     )
 
+    st.markdown("---")
+
+    # Add new player
+    st.subheader("Add New Player")
+    new_player_name = st.text_input("New Player Name", key=f"new_player_{active_session['id']}")
+
+    if st.button("Add Player to List", key=f"add_player_btn_{active_session['id']}"):
+        if new_player_name.strip():
+            add_player(new_player_name.strip())
+            st.success(f"Added {new_player_name}")
+            st.rerun()
+
+    st.markdown("---")
+
+    # Save session roster
     if st.button("Save Session Players", key=f"save_players_{active_session['id']}"):
         update_session_players(active_session["id"], edited_players)
         st.success("Session players updated!")
@@ -294,15 +311,3 @@ else:
             line += f" — Eliminated: {eliminated}"
 
         st.write(line)
-
-
-# ---------------------------------------------------------
-# 4. Add Player
-# ---------------------------------------------------------
-with st.expander("Add Player"):
-    new_player = st.text_input("New Player Name")
-    if st.button("Add Player"):
-        if new_player.strip():
-            add_player(new_player.strip())
-            st.success(f"Added {new_player}")
-            st.rerun()

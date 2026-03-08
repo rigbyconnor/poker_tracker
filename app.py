@@ -166,6 +166,23 @@ else:
 
 
 # ---------------------------------------------------------
+# Edit Session Players
+# ---------------------------------------------------------
+with st.expander("Edit Session Players"):
+    edited_players = st.multiselect(
+        "Players in this session:",
+        options=player_names,
+        default=players_in_game,
+        key=f"edit_players_{active_session['id']}"
+    )
+
+    if st.button("Save Session Players", key=f"save_players_{active_session['id']}"):
+        update_session_players(active_session["id"], edited_players)
+        st.success("Session players updated!")
+        st.rerun()
+
+
+# ---------------------------------------------------------
 # 2. Log a Hand
 # ---------------------------------------------------------
 st.header("Log a Hand")

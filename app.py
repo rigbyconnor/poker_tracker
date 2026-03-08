@@ -166,7 +166,7 @@ else:
 
 
 # ---------------------------------------------------------
-# Edit Session Players (NOW INCLUDES ADD PLAYER)
+# Edit Session Players (NOW WITH DUPLICATE CHECK)
 # ---------------------------------------------------------
 with st.expander("Edit Session Players"):
 
@@ -185,10 +185,15 @@ with st.expander("Edit Session Players"):
     new_player_name = st.text_input("New Player Name", key=f"new_player_{active_session['id']}")
 
     if st.button("Add Player to List", key=f"add_player_btn_{active_session['id']}"):
-        if new_player_name.strip():
-            add_player(new_player_name.strip())
-            st.success(f"Added {new_player_name}")
-            st.rerun()
+        cleaned = new_player_name.strip()
+
+        if cleaned:
+            if cleaned in player_names:
+                st.warning(f"{cleaned} already exists in the global player list.")
+            else:
+                add_player(cleaned)
+                st.success(f"Added {cleaned}")
+                st.rerun()
 
     st.markdown("---")
 

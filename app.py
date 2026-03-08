@@ -556,4 +556,29 @@ with st.expander("Session Leaderboard"):
                 stats[p]["eliminated_hand"] = idx
 
         for p in players_in_game:
-            if p in h["players_in
+            if p in h["players_in_game"]:
+                if (
+                    p != winner
+                    and p not in showdown_losers
+                    and p not in eliminated
+                ):
+                    stats[p]["folds"] += 1
+
+    st.write("### 🏆 Session Leaderboard")
+
+    leaderboard_rows = []
+    for p in players_in_game:
+        sd_total = stats[p]["sd_total"]
+        sd_win_pct = f"{round((stats[p]['sd_wins'] / sd_total) * 100)}%" if sd_total > 0 else "—"
+        elim = stats[p]["eliminated_hand"] if stats[p]["eliminated_hand"] else "—"
+
+        leaderboard_rows.append({
+            "Player": p,
+            "Wins 🏆": stats[p]["wins"],
+            "SD Win% 👎": sd_win_pct,
+            "Big Pots 💰": stats[p]["big_pots"],
+            "Folds 🪫": stats[p]["folds"],
+            "Eliminated 💀": elim
+        })
+
+    st.dataframe(leaderboard_rows, hide_index=True)

@@ -63,21 +63,17 @@ def checkbox_grid(label, options, key_prefix, columns=2):
 
 
 # ---------------------------------------------------------
+# Initialize session state for players_in_tonights_game
+# ---------------------------------------------------------
+if "players_in_tonights_game" not in st.session_state:
+    st.session_state["players_in_tonights_game"] = []
+
+
+# ---------------------------------------------------------
 # UI: Log a hand (always at the top)
 # ---------------------------------------------------------
 st.title("Poker Night Tracker")
 st.header("Log a Hand")
-
-
-# ---------------------------------------------------------
-# Hidden logic dropdown (runs early, invisible)
-# ---------------------------------------------------------
-st.multiselect(
-    "Players in Tonight's Game (hidden)",
-    options=player_names,
-    key="players_in_tonights_game",
-    label_visibility="collapsed"
-)
 
 players_in_game = st.session_state["players_in_tonights_game"]
 

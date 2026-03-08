@@ -260,6 +260,15 @@ else:
             "created_at": datetime.utcnow().isoformat(),
         }
         supabase.table("hands").insert(data).execute()
+
+        # ---------------------------------------------------------
+        # RESET ALL FORM FIELDS FOR THIS SESSION
+        # ---------------------------------------------------------
+        sid = active_session["id"]
+        for key in list(st.session_state.keys()):
+            if str(sid) in key:  # only clear keys for this session
+                del st.session_state[key]
+
         st.success("Hand logged!")
         st.rerun()
 

@@ -74,8 +74,8 @@ def checkbox_grid(label, options, key_prefix, session_id, columns=2):
         for c in range(columns):
             if idx < len(options):
                 name = options[idx]
-                key = f"{key_prefix}_{session_id}_{name}"
-                checked = cols[c].checkbox(name, key=key)
+                # NO KEY → resets automatically
+                checked = cols[c].checkbox(name)
                 if checked:
                     selected.append(name)
                 idx += 1
@@ -173,17 +173,16 @@ with st.expander("Edit Session Players"):
         "Players in this session:",
         options=player_names,
         default=players_in_game,
-        key=f"edit_players_{active_session['id']}"
     )
 
-    if st.button("Save Session Players", key=f"save_players_{active_session['id']}"):
+    if st.button("Save Session Players"):
         update_session_players(active_session["id"], edited_players)
         st.success("Session players updated!")
         st.rerun()
 
 
 # ---------------------------------------------------------
-# 2. Log a Hand (using st.form for perfect reset)
+# 2. Log a Hand (NO KEYS → auto-reset)
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
@@ -191,84 +190,78 @@ if not active_session:
     st.info("Select or create a session to begin.")
     st.stop()
 
-sid = str(active_session["id"])
+if not players_in_game:
+    st.info("This session has no players. Edit the session to add players.")
+else:
+    col1, col2 = st.columns(2)
 
-with st.form(key=f"hand_form_{sid}"):
+    with col1:
+        st.subheader("Winner")
+        winner = st.radio("", players_in_game)
 
-    if not players_in_game:
-        st.info("This session has no players. Edit the session to add players.")
-    else:
-        col1, col2 = st.columns(2)
+    with col2:
+        st.subheader("Street")
+        streets = ["Preflop", "Flop", "Turn", "River"]
+        street = st.radio("", streets)
 
-        with col1:
-            st.subheader("Winner")
-            winner = st.radio("", players_in_game)
+    col3, col4 = st.columns(2)
 
-        with col2:
-            st.subheader("Street")
-            streets = ["Preflop", "Flop", "Turn", "River"]
-            street = st.radio("", streets)
+    with col3:
+        st.subheader("Hand Type")
+        hand_types = [
+            "High Card", "Pair", "Two Pair", "Trips", "Straight",
+            "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
+        ]
+        hand_type = st.radio("", hand_types)
 
-        col3, col4 = st.columns(2)
+    with col4:
+        st.subheader("Pot Size")
+        pot_sizes = ["S", "M", "L"]
+        pot_size = st.radio("", pot_sizes)
 
-        with col3:
-            st.subheader("Hand Type")
-            hand_types = [
-                "High Card", "Pair", "Two Pair", "Trips", "Straight",
-                "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
-            ]
-            hand_type = st.radio("", hand_types)
+    st.subheader("All-In")
+    all_in = st.checkbox("All-In")
 
-        with col4:
-            st.subheader("Pot Size")
-            pot_sizes = ["S", "M", "L"]
-            pot_size = st.radio("", pot_sizes)
+    showdown_losers = []
+    if street == "River" and hand_type != "No Showdown":
+        showdown_losers = checkbox_grid(
+            "Showdown Losers",
+            players_in_game,
+            key_prefix="losers",
+            session_id=active_session["id"],
+            columns=2
+        )
 
-        st.subheader("All-In")
-        all_in = st.checkbox("All-In")
+    eliminated_player = None
+    if all_in:
+        eliminated_list = checkbox_grid(
+            "Eliminated Player",
+            players_in_game,
+            key_prefix="elim",
+            session_id=active_session["id"],
+            columns=2
+        )
+        if len(eliminated_list) > 0:
+            eliminated_player = eliminated_list[0]
 
-        showdown_losers = []
-        if street == "River" and hand_type != "No Showdown":
-            showdown_losers = checkbox_grid(
-                "Showdown Losers",
-                players_in_game,
-                key_prefix="losers",
-                session_id=sid,
-                columns=2
-            )
+    if st.button("Submit Hand", type="primary"):
+        data = {
+            "hand_number": int(datetime.utcnow().timestamp()),
+            "winner": winner,
+            "street": street,
+            "hand_type": hand_type,
+            "pot_size": pot_size,
+            "all_in": all_in,
+            "eliminated_player": eliminated_player,
+            "showdown_losers": showdown_losers,
+            "players_in_game": players_in_game,
+            "game_name": active_session["name"],
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        supabase.table("hands").insert(data).execute()
 
-        eliminated_player = None
-        if all_in:
-            eliminated_list = checkbox_grid(
-                "Eliminated Player",
-                players_in_game,
-                key_prefix="elim",
-                session_id=sid,
-                columns=2
-            )
-            if len(eliminated_list) > 0:
-                eliminated_player = eliminated_list[0]
-
-        submitted = st.form_submit_button("Submit Hand")
-
-        if submitted:
-            data = {
-                "hand_number": int(datetime.utcnow().timestamp()),
-                "winner": winner,
-                "street": street,
-                "hand_type": hand_type,
-                "pot_size": pot_size,
-                "all_in": all_in,
-                "eliminated_player": eliminated_player,
-                "showdown_losers": showdown_losers,
-                "players_in_game": players_in_game,
-                "game_name": active_session["name"],
-                "created_at": datetime.utcnow().isoformat(),
-            }
-            supabase.table("hands").insert(data).execute()
-
-            st.success("Hand logged!")
-            st.rerun()
+        st.success("Hand logged!")
+        st.rerun()
 
 
 # ---------------------------------------------------------

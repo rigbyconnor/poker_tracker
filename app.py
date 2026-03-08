@@ -206,7 +206,25 @@ with st.expander("Edit Session Players"):
 
 
 # ---------------------------------------------------------
-# 2. Log a Hand
+# 2. Determine Alive Players (Option A)
+# ---------------------------------------------------------
+hands = load_hands_for_session(active_session["name"])
+
+eliminated_so_far = set()
+chronological = list(reversed(hands))  # oldest → newest
+
+for h in chronological:
+    eliminated = h.get("eliminated_player") or []
+    if isinstance(eliminated, str):
+        eliminated = [eliminated]
+    for p in eliminated:
+        eliminated_so_far.add(p)
+
+alive_players = [p for p in players_in_game if p not in eliminated_so_far]
+
+
+# ---------------------------------------------------------
+# 3. Log a Hand
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
@@ -214,87 +232,84 @@ if not active_session:
     st.info("Select or create a session to begin.")
     st.stop()
 
-if not players_in_game:
-    st.info("This session has no players. Edit the session to add players.")
-else:
-    col1, col2 = st.columns(2)
+if not alive_players:
+    st.info("All players have been eliminated.")
+    st.stop()
 
-    with col1:
-        st.subheader("Winner")
-        winner = st.radio("", players_in_game, key=f"winner_radio_{active_session['id']}")
+col1, col2 = st.columns(2)
 
-    with col2:
-        st.subheader("Street")
-        streets = ["Preflop", "Flop", "Turn", "River"]
-        street = st.radio("", streets, key=f"street_radio_{active_session['id']}")
+with col1:
+    st.subheader("Winner")
+    winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}")
 
-    col3, col4 = st.columns(2)
+with col2:
+    st.subheader("Street")
+    streets = ["Preflop", "Flop", "Turn", "River"]
+    street = st.radio("", streets, key=f"street_radio_{active_session['id']}")
 
-    with col3:
-        st.subheader("Hand Type")
-        hand_types = [
-            "High Card", "Pair", "Two Pair", "Trips", "Straight",
-            "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
-        ]
-        hand_type = st.radio("", hand_types, key=f"handtype_radio_{active_session['id']}")
+col3, col4 = st.columns(2)
 
-    with col4:
-        st.subheader("Pot Size")
-        pot_sizes = ["S", "M", "L"]
-        pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}")
+with col3:
+    st.subheader("Hand Type")
+    hand_types = [
+        "High Card", "Pair", "Two Pair", "Trips", "Straight",
+        "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
+    ]
+    hand_type = st.radio("", hand_types, key=f"handtype_radio_{active_session['id']}")
 
-    st.subheader("All-In")
-    all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}")
+with col4:
+    st.subheader("Pot Size")
+    pot_sizes = ["S", "M", "L"]
+    pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}")
 
-    showdown_losers = []
-    if street == "River" and hand_type != "No Showdown":
-        # Exclude winner from showdown loser options
-        showdown_options = [p for p in players_in_game if p != winner]
-        showdown_losers = checkbox_grid(
-            "Showdown Losers",
-            showdown_options,
-            key_prefix="losers",
-            session_id=active_session["id"],
-            columns=2
-        )
+st.subheader("All-In")
+all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}")
 
-    eliminated_players = []
-    if all_in:
-        # Exclude winner from eliminated options
-        elim_options = [p for p in players_in_game if p != winner]
-        eliminated_players = checkbox_grid(
-            "Eliminated Player(s)",
-            elim_options,
-            key_prefix="elim",
-            session_id=active_session["id"],
-            columns=2
-        )
+showdown_losers = []
+if street == "River" and hand_type != "No Showdown":
+    showdown_options = [p for p in alive_players if p != winner]
+    showdown_losers = checkbox_grid(
+        "Showdown Losers",
+        showdown_options,
+        key_prefix="losers",
+        session_id=active_session["id"],
+        columns=2
+    )
 
-    if st.button("Submit Hand", type="primary"):
-        data = {
-            "hand_number": int(datetime.utcnow().timestamp()),
-            "winner": winner,
-            "street": street,
-            "hand_type": hand_type,
-            "pot_size": pot_size,
-            "all_in": all_in,
-            "eliminated_player": eliminated_players,
-            "showdown_losers": showdown_losers,
-            "players_in_game": players_in_game,
-            "game_name": active_session["name"],
-            "created_at": datetime.utcnow().isoformat(),
-        }
-        supabase.table("hands").insert(data).execute()
-        st.success("Hand logged!")
-        st.rerun()
+eliminated_players = []
+if all_in:
+    elim_options = [p for p in alive_players if p != winner]
+    eliminated_players = checkbox_grid(
+        "Eliminated Player(s)",
+        elim_options,
+        key_prefix="elim",
+        session_id=active_session["id"],
+        columns=2
+    )
+
+if st.button("Submit Hand", type="primary"):
+    data = {
+        "hand_number": int(datetime.utcnow().timestamp()),
+        "winner": winner,
+        "street": street,
+        "hand_type": hand_type,
+        "pot_size": pot_size,
+        "all_in": all_in,
+        "eliminated_player": eliminated_players,
+        "showdown_losers": showdown_losers,
+        "players_in_game": players_in_game,
+        "game_name": active_session["name"],
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    supabase.table("hands").insert(data).execute()
+    st.success("Hand logged!")
+    st.rerun()
 
 
 # ---------------------------------------------------------
-# 3. Hand History (last 5 visible, rest expandable)
+# 4. Hand History
 # ---------------------------------------------------------
 st.header("Hand History")
-
-hands = load_hands_for_session(active_session["name"])
 
 if not hands:
     st.info("No hands logged yet.")
@@ -368,7 +383,7 @@ else:
 
 
 # ---------------------------------------------------------
-# 4. Session Leaderboard (inside expander)
+# 5. Session Leaderboard
 # ---------------------------------------------------------
 with st.expander("Session Leaderboard"):
 

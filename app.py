@@ -70,15 +70,9 @@ st.header("Log a Hand")
 
 
 # ---------------------------------------------------------
-# HIDDEN LOGIC DROPDOWN (runs early, not visible)
+# Read players from session state (NO hidden widget)
 # ---------------------------------------------------------
-players_in_game = st.multiselect(
-    "hidden_players",
-    options=player_names,
-    default=[],
-    key="players_in_tonights_game",
-    label_visibility="collapsed"
-)
+players_in_game = st.session_state.get("players_in_tonights_game", [])
 
 
 # ---------------------------------------------------------
@@ -188,7 +182,7 @@ else:
 
 
 # ---------------------------------------------------------
-# VISIBLE DROPDOWN (placed BELOW history)
+# VISIBLE DROPDOWN (ONLY ONE WIDGET)
 # ---------------------------------------------------------
 with st.expander("Players in Tonight's Game"):
     st.multiselect(

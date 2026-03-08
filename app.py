@@ -306,6 +306,64 @@ if st.button("Submit Hand", type="primary"):
     supabase.table("hands").insert(data).execute()
     st.success("Hand logged!")
     st.rerun()
+
+# ---------------------------------------------------------
+# Admin Tools (Delete Player / Delete Session)
+# ---------------------------------------------------------
+with st.expander("Admin Tools (Danger Zone)"):
+
+    st.write("### Delete a Global Player")
+    player_to_delete = st.selectbox(
+        "Select player to delete:",
+        player_names,
+        key="delete_player_select"
+    )
+
+    if st.button("Delete Player", key="delete_player_btn"):
+        st.session_state["confirm_delete_player"] = player_to_delete
+
+    if st.session_state.get("confirm_delete_player") == player_to_delete:
+        st.warning(f"Are you sure you want to delete '{player_to_delete}' from the global list?")
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("Yes, Delete Player", key="confirm_delete_player_yes"):
+                supabase.table("players").delete().eq("name", player_to_delete).execute()
+                st.success(f"Deleted player '{player_to_delete}'.")
+                st.session_state["confirm_delete_player"] = None
+                st.rerun()
+        with c2:
+            if st.button("Cancel", key="confirm_delete_player_no"):
+                st.session_state["confirm_delete_player"] = None
+
+    st.markdown("---")
+
+    st.write("### Delete an Entire Session")
+    session_to_delete = st.selectbox(
+        "Select session to delete:",
+        session_names,
+        key="delete_session_select"
+    )
+
+    if st.button("Delete Session", key="delete_session_btn"):
+        st.session_state["confirm_delete_session"] = session_to_delete
+
+    if st.session_state.get("confirm_delete_session") == session_to_delete:
+        st.warning(f"Delete session '{session_to_delete}' and ALL hands in it?")
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("Yes, Delete Session", key="confirm_delete_session_yes"):
+                # Delete all hands first
+                supabase.table("hands").delete().eq("game_name", session_to_delete).execute()
+                # Delete the session record
+                supabase.table("sessions").delete().eq("name", session_to_delete).execute()
+
+                st.success(f"Session '{session_to_delete}' deleted.")
+                st.session_state["confirm_delete_session"] = None
+                st.session_state["active_session_id"] = None
+                st.rerun()
+        with c2:
+            if st.button("Cancel", key="confirm_delete_session_no"):
+                st.session_state["confirm_delete_session"] = None
     # ---------------------------------------------------------
 # 4. Hand History (Tap‑to‑Expand Actions)
 # ---------------------------------------------------------

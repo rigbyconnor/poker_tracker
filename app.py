@@ -311,15 +311,10 @@ if st.button("Submit Hand", type="primary"):
 # ---------------------------------------------------------
 st.header("Hand History")
 
-if not hands:
-    st.info("No hands logged yet.")
-else:
+# All hands go inside a single expander
+with st.expander("Show Full Hand History", expanded=False):
+
     total_hands = len(hands)
-
-    recent_hands = hands[:5]
-    older_hands = hands[5:]
-
-    st.subheader("Recent Hands")
 
     # ---------------------------------------------------------
     # Helper: compute historical alive players for a given hand
@@ -486,17 +481,10 @@ else:
                             st.session_state["open_hand"] = None
                             st.rerun()
 
-    # Render recent hands
-    for index, h in enumerate(recent_hands):
+    # Render ALL hands inside the expander
+    for index, h in enumerate(hands):
         hand_number = total_hands - index
         render_hand(h, hand_number)
-
-    # Older hands
-    if older_hands:
-        with st.expander("Show Full Hand History"):
-            for idx, h in enumerate(older_hands, start=6):
-                hand_number = total_hands - (idx - 1)
-                render_hand(h, hand_number)
 
 
 # ---------------------------------------------------------

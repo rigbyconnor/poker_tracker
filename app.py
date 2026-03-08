@@ -60,7 +60,7 @@ def load_hands_for_session(session_name):
 
 
 # ---------------------------------------------------------
-# Checkbox grid helper (session‑namespaced keys)
+# Checkbox grid helper
 # ---------------------------------------------------------
 def checkbox_grid(label, options, key_prefix, session_id, columns=2):
     st.write(f"### {label}")
@@ -101,9 +101,6 @@ session_dropdown_options = session_names + [CREATE_NEW]
 # ---------------------------------------------------------
 if "active_session_id" not in st.session_state:
     st.session_state["active_session_id"] = None
-
-if "form_reset_counter" not in st.session_state:
-    st.session_state["form_reset_counter"] = 0
 
 
 # ---------------------------------------------------------
@@ -186,7 +183,7 @@ with st.expander("Edit Session Players"):
 
 
 # ---------------------------------------------------------
-# 2. Log a Hand (wrapped in dynamic container)
+# 2. Log a Hand (using st.form for perfect reset)
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
@@ -196,8 +193,7 @@ if not active_session:
 
 sid = str(active_session["id"])
 
-form_key = f"hand_form_{sid}_{st.session_state['form_reset_counter']}"
-with st.container(key=form_key):
+with st.form(key=f"hand_form_{sid}"):
 
     if not players_in_game:
         st.info("This session has no players. Edit the session to add players.")
@@ -206,12 +202,12 @@ with st.container(key=form_key):
 
         with col1:
             st.subheader("Winner")
-            winner = st.radio("", players_in_game, key=f"winner_radio_{sid}")
+            winner = st.radio("", players_in_game)
 
         with col2:
             st.subheader("Street")
             streets = ["Preflop", "Flop", "Turn", "River"]
-            street = st.radio("", streets, key=f"street_radio_{sid}")
+            street = st.radio("", streets)
 
         col3, col4 = st.columns(2)
 
@@ -221,15 +217,15 @@ with st.container(key=form_key):
                 "High Card", "Pair", "Two Pair", "Trips", "Straight",
                 "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
             ]
-            hand_type = st.radio("", hand_types, key=f"handtype_radio_{sid}")
+            hand_type = st.radio("", hand_types)
 
         with col4:
             st.subheader("Pot Size")
             pot_sizes = ["S", "M", "L"]
-            pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{sid}")
+            pot_size = st.radio("", pot_sizes)
 
         st.subheader("All-In")
-        all_in = st.checkbox("All-In", key=f"allin_toggle_{sid}")
+        all_in = st.checkbox("All-In")
 
         showdown_losers = []
         if street == "River" and hand_type != "No Showdown":
@@ -253,7 +249,9 @@ with st.container(key=form_key):
             if len(eliminated_list) > 0:
                 eliminated_player = eliminated_list[0]
 
-        if st.button("Submit Hand", type="primary"):
+        submitted = st.form_submit_button("Submit Hand")
+
+        if submitted:
             data = {
                 "hand_number": int(datetime.utcnow().timestamp()),
                 "winner": winner,
@@ -268,9 +266,6 @@ with st.container(key=form_key):
                 "created_at": datetime.utcnow().isoformat(),
             }
             supabase.table("hands").insert(data).execute()
-
-            # Increment reset counter
-            st.session_state["form_reset_counter"] += 1
 
             st.success("Hand logged!")
             st.rerun()

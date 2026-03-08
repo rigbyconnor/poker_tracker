@@ -78,7 +78,7 @@ players_in_game = st.session_state["players_in_tonights_game"]
 
 
 # ---------------------------------------------------------
-# 2. Log a Hand (depends on players_in_game)
+# 2. Log a Hand
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
@@ -157,7 +157,7 @@ else:
 
 
 # ---------------------------------------------------------
-# 3. Hand History (simple feed)
+# 3. Hand History (simple feed with details)
 # ---------------------------------------------------------
 st.header("Hand History")
 
@@ -177,10 +177,22 @@ else:
 
     for index, h in enumerate(hands):
         hand_number = total_hands - index
-        winner = h["winner"]
-        hand_type = h["hand_type"]
 
-        st.write(f"**Hand #{hand_number} — {winner} won with {hand_type}**")
+        winner = h["winner"]
+        street = h["street"]
+        hand_type = h["hand_type"]
+        pot_size = h["pot_size"]
+        eliminated = h["eliminated_player"]
+
+        line = (
+            f"**Hand #{hand_number} — {winner} won with {hand_type} "
+            f"on the {street} (Pot: {pot_size})**"
+        )
+
+        if eliminated:
+            line += f" — Eliminated: {eliminated}"
+
+        st.write(line)
 
 
 # ---------------------------------------------------------

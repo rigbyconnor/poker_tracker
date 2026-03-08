@@ -63,24 +63,25 @@ def checkbox_grid(label, options, key_prefix, columns=2):
 
 
 # ---------------------------------------------------------
-# Initialize session state for players_in_tonights_game
-# ---------------------------------------------------------
-if "players_in_tonights_game" not in st.session_state:
-    st.session_state["players_in_tonights_game"] = []
-
-
-# ---------------------------------------------------------
-# UI: Log a hand (always at the top)
+# 1. Players in Tonight's Game (TOP OF PAGE)
 # ---------------------------------------------------------
 st.title("Poker Night Tracker")
-st.header("Log a Hand")
+
+with st.expander("Players in Tonight's Game", expanded=True):
+    st.multiselect(
+        "Select players in tonight's game:",
+        options=player_names,
+        key="players_in_tonights_game"
+    )
 
 players_in_game = st.session_state["players_in_tonights_game"]
 
 
 # ---------------------------------------------------------
-# Log Hand fields (ABOVE the visible dropdown)
+# 2. Log a Hand (depends on players_in_game)
 # ---------------------------------------------------------
+st.header("Log a Hand")
+
 if not players_in_game:
     st.info("Select players in tonight's game to begin logging a hand.")
 else:
@@ -156,7 +157,7 @@ else:
 
 
 # ---------------------------------------------------------
-# Hand History (simple feed)
+# 3. Hand History (simple feed)
 # ---------------------------------------------------------
 st.header("Hand History")
 
@@ -175,7 +176,7 @@ else:
     total_hands = len(hands)
 
     for index, h in enumerate(hands):
-        hand_number = total_hands - index  # Hand #1 is oldest
+        hand_number = total_hands - index
         winner = h["winner"]
         hand_type = h["hand_type"]
 
@@ -183,18 +184,7 @@ else:
 
 
 # ---------------------------------------------------------
-# VISIBLE DROPDOWN (ONLY ONE WIDGET)
-# ---------------------------------------------------------
-with st.expander("Players in Tonight's Game"):
-    st.multiselect(
-        "Select players in tonight's game:",
-        options=player_names,
-        key="players_in_tonights_game"
-    )
-
-
-# ---------------------------------------------------------
-# Add Player (collapsible)
+# 4. Add Player
 # ---------------------------------------------------------
 with st.expander("Add Player"):
     new_player = st.text_input("New Player Name")

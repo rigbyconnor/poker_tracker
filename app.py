@@ -270,8 +270,8 @@ else:
             "hand_type": hand_type,
             "pot_size": pot_size,
             "all_in": all_in,
-            "eliminated_player": eliminated_players,  # now a list
-            "showdown_losers": showdown_losers,       # list already
+            "eliminated_player": eliminated_players,
+            "showdown_losers": showdown_losers,
             "players_in_game": players_in_game,
             "game_name": active_session["name"],
             "created_at": datetime.utcnow().isoformat(),
@@ -282,7 +282,7 @@ else:
 
 
 # ---------------------------------------------------------
-# 3. Hand History (supports multiple losers + eliminated)
+# 3. Hand History (last 5 visible, rest expandable)
 # ---------------------------------------------------------
 st.header("Hand History")
 
@@ -293,7 +293,12 @@ if not hands:
 else:
     total_hands = len(hands)
 
-    for index, h in enumerate(hands):
+    recent_hands = hands[:5]
+    older_hands = hands[5:]
+
+    st.subheader("Recent Hands")
+
+    for index, h in enumerate(recent_hands):
         hand_number = total_hands - index
 
         winner = h["winner"]
@@ -304,7 +309,6 @@ else:
         showdown_losers = h.get("showdown_losers", [])
         eliminated = h.get("eliminated_player", [])
 
-        # Normalize older single-value fields
         if isinstance(eliminated, str):
             eliminated = [eliminated]
         if isinstance(showdown_losers, str):
@@ -322,3 +326,34 @@ else:
             line += f" — Eliminated: {', '.join(eliminated)}"
 
         st.write(line)
+
+    if older_hands:
+        with st.expander("Show Full Hand History"):
+            for idx, h in enumerate(older_hands, start=6):
+                hand_number = total_hands - (idx - 1)
+
+                winner = h["winner"]
+                street = h["street"]
+                hand_type = h["hand_type"]
+                pot_size = h["pot_size"]
+
+                showdown_losers = h.get("showdown_losers", [])
+                eliminated = h.get("eliminated_player", [])
+
+                if isinstance(eliminated, str):
+                    eliminated = [eliminated]
+                if isinstance(showdown_losers, str):
+                    showdown_losers = [showdown_losers]
+
+                line = (
+                    f"**Hand #{hand_number} — {winner} won with {hand_type} "
+                    f"on the {street} (Pot: {pot_size})**"
+                )
+
+                if showdown_losers:
+                    line += f" — Showdown Losers: {', '.join(showdown_losers)}"
+
+                if eliminated:
+                    line += f" — Eliminated: {', '.join(eliminated)}"
+
+                st.write(line)

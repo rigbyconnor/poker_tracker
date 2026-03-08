@@ -68,15 +68,9 @@ def checkbox_grid(label, options, key_prefix, columns=2):
 st.title("Poker Night Tracker")
 st.header("Log a Hand")
 
-# ---------------------------------------------------------
-# We load players early, but DO NOT show the dropdown yet.
-# ---------------------------------------------------------
-players = load_players()
-player_names = [p["name"] for p in players]
-
 
 # ---------------------------------------------------------
-# Hand History (always visible, ABOVE the dropdown)
+# Hand History (always visible)
 # ---------------------------------------------------------
 st.header("Hand History")
 

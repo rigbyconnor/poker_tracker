@@ -166,11 +166,10 @@ else:
 
 
 # ---------------------------------------------------------
-# Edit Session Players (NOW WITH DUPLICATE CHECK)
+# Edit Session Players (with duplicate protection)
 # ---------------------------------------------------------
 with st.expander("Edit Session Players"):
 
-    # Current players in this session
     edited_players = st.multiselect(
         "Players in this session:",
         options=player_names,
@@ -180,7 +179,6 @@ with st.expander("Edit Session Players"):
 
     st.markdown("---")
 
-    # Add new player
     st.subheader("Add New Player")
     new_player_name = st.text_input("New Player Name", key=f"new_player_{active_session['id']}")
 
@@ -197,7 +195,6 @@ with st.expander("Edit Session Players"):
 
     st.markdown("---")
 
-    # Save session roster
     if st.button("Save Session Players", key=f"save_players_{active_session['id']}"):
         update_session_players(active_session["id"], edited_players)
         st.success("Session players updated!")
@@ -255,17 +252,15 @@ else:
             columns=2
         )
 
-    eliminated_player = None
+    eliminated_players = []
     if all_in:
-        eliminated_list = checkbox_grid(
-            "Eliminated Player",
+        eliminated_players = checkbox_grid(
+            "Eliminated Player(s)",
             players_in_game,
             key_prefix="elim",
             session_id=active_session["id"],
             columns=2
         )
-        if len(eliminated_list) > 0:
-            eliminated_player = eliminated_list[0]
 
     if st.button("Submit Hand", type="primary"):
         data = {
@@ -275,8 +270,8 @@ else:
             "hand_type": hand_type,
             "pot_size": pot_size,
             "all_in": all_in,
-            "eliminated_player": eliminated_player,
-            "showdown_losers": showdown_losers,
+            "eliminated_player": eliminated_players,  # now a list
+            "showdown_losers": showdown_losers,       # list already
             "players_in_game": players_in_game,
             "game_name": active_session["name"],
             "created_at": datetime.utcnow().isoformat(),
@@ -287,7 +282,7 @@ else:
 
 
 # ---------------------------------------------------------
-# 3. Hand History
+# 3. Hand History (supports multiple losers + eliminated)
 # ---------------------------------------------------------
 st.header("Hand History")
 
@@ -305,14 +300,25 @@ else:
         street = h["street"]
         hand_type = h["hand_type"]
         pot_size = h["pot_size"]
-        eliminated = h["eliminated_player"]
+
+        showdown_losers = h.get("showdown_losers", [])
+        eliminated = h.get("eliminated_player", [])
+
+        # Normalize older single-value fields
+        if isinstance(eliminated, str):
+            eliminated = [eliminated]
+        if isinstance(showdown_losers, str):
+            showdown_losers = [showdown_losers]
 
         line = (
             f"**Hand #{hand_number} — {winner} won with {hand_type} "
             f"on the {street} (Pot: {pot_size})**"
         )
 
+        if showdown_losers:
+            line += f" — Showdown Losers: {', '.join(showdown_losers)}"
+
         if eliminated:
-            line += f" — Eliminated: {eliminated}"
+            line += f" — Eliminated: {', '.join(eliminated)}"
 
         st.write(line)

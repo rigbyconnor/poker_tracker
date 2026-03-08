@@ -69,7 +69,36 @@ st.title("Poker Night Tracker")
 st.header("Log a Hand")
 
 # ---------------------------------------------------------
-# Players in Tonight's Game (collapsible dropdown BELOW Log Hand)
+# Hand History (now ABOVE Players sections)
+# ---------------------------------------------------------
+st.header("Hand History")
+
+hands = supabase.table("hands").select("*").order("id", desc=True).execute().data
+
+if not hands:
+    st.info("No hands logged yet.")
+else:
+    for h in hands:
+        st.markdown(
+            f"""
+            <div style='padding:12px;border-radius:10px;background:#f7f7f7;margin-bottom:10px;'>
+                <strong>Winner:</strong> {h['winner']}<br>
+                <strong>Street:</strong> {h['street']}<br>
+                <strong>Hand:</strong> {h['hand_type']}<br>
+                <strong>Pot:</strong> {h['pot_size']}<br>
+                <strong>All-In:</strong> {h['all_in']}<br>
+                <strong>Eliminated:</strong> {h['eliminated_player']}<br>
+                <strong>Showdown Losers:</strong> {h['showdown_losers']}<br>
+                <strong>Game:</strong> {h['game_name']}<br>
+                <small>{h['created_at']}</small>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+# ---------------------------------------------------------
+# Players in Tonight's Game (collapsible dropdown)
 # ---------------------------------------------------------
 with st.expander("Players in Tonight's Game"):
     players_in_game = st.multiselect(
@@ -86,7 +115,7 @@ if not players_in_game:
 
 
 # ---------------------------------------------------------
-# Now show the Log Hand fields (only after players selected)
+# Log Hand fields (only after players selected)
 # ---------------------------------------------------------
 col1, col2 = st.columns(2)
 
@@ -180,7 +209,7 @@ if st.button("Submit Hand", type="primary"):
 
 
 # ---------------------------------------------------------
-# Add Player (still collapsible, below tonight's players)
+# Add Player (collapsible)
 # ---------------------------------------------------------
 with st.expander("Add Player"):
     new_player = st.text_input("New Player Name")
@@ -189,32 +218,3 @@ with st.expander("Add Player"):
             add_player(new_player.strip())
             st.success(f"Added {new_player}")
             st.rerun()
-
-
-# ---------------------------------------------------------
-# Hand history
-# ---------------------------------------------------------
-st.header("Hand History")
-
-hands = supabase.table("hands").select("*").order("id", desc=True).execute().data
-
-if not hands:
-    st.info("No hands logged yet.")
-else:
-    for h in hands:
-        st.markdown(
-            f"""
-            <div style='padding:12px;border-radius:10px;background:#f7f7f7;margin-bottom:10px;'>
-                <strong>Winner:</strong> {h['winner']}<br>
-                <strong>Street:</strong> {h['street']}<br>
-                <strong>Hand:</strong> {h['hand_type']}<br>
-                <strong>Pot:</strong> {h['pot_size']}<br>
-                <strong>All-In:</strong> {h['all_in']}<br>
-                <strong>Eliminated:</strong> {h['eliminated_player']}<br>
-                <strong>Showdown Losers:</strong> {h['showdown_losers']}<br>
-                <strong>Game:</strong> {h['game_name']}<br>
-                <small>{h['created_at']}</small>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )

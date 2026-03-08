@@ -106,7 +106,13 @@ if "active_session_id" not in st.session_state:
 # ---------------------------------------------------------
 # 1. Session Selector
 # ---------------------------------------------------------
-st.title("Poker Night Tracker")
+
+# ⭐ Smaller title for mobile
+st.markdown(
+    "<h3 style='text-align: center; margin-bottom: 0;'>Poker Night Tracker</h3>",
+    unsafe_allow_html=True
+)
+
 st.subheader("Select Game Session")
 
 # Determine default selection

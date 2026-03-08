@@ -153,32 +153,30 @@ else:
 
 
 # ---------------------------------------------------------
-# Hand History (ABOVE the visible dropdown)
+# Hand History (simple feed)
 # ---------------------------------------------------------
 st.header("Hand History")
 
-hands = supabase.table("hands").select("*").order("id", desc=True).execute().data
+hands = (
+    supabase.table("hands")
+    .select("*")
+    .eq("game_name", game_name if "game_name" in locals() else "")
+    .order("created_at", desc=True)
+    .execute()
+    .data
+)
 
 if not hands:
     st.info("No hands logged yet.")
 else:
-    for h in hands:
-        st.markdown(
-            f"""
-            <div style='padding:12px;border-radius:10px;background:#f7f7f7;margin-bottom:10px;'>
-                <strong>Winner:</strong> {h['winner']}<br>
-                <strong>Street:</strong> {h['street']}<br>
-                <strong>Hand:</strong> {h['hand_type']}<br>
-                <strong>Pot:</strong> {h['pot_size']}<br>
-                <strong>All-In:</strong> {h['all_in']}<br>
-                <strong>Eliminated:</strong> {h['eliminated_player']}<br>
-                <strong>Showdown Losers:</strong> {h['showdown_losers']}<br>
-                <strong>Game:</strong> {h['game_name']}<br>
-                <small>{h['created_at']}</small>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    total_hands = len(hands)
+
+    for index, h in enumerate(hands):
+        hand_number = total_hands - index  # Hand #1 is oldest
+        winner = h["winner"]
+        hand_type = h["hand_type"]
+
+        st.write(f"**Hand #{hand_number} — {winner} won with {hand_type}**")
 
 
 # ---------------------------------------------------------

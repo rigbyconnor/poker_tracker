@@ -107,7 +107,6 @@ if "active_session_id" not in st.session_state:
 # 1. Session Selector
 # ---------------------------------------------------------
 
-# ⭐ Smaller title for mobile
 st.markdown(
     "<h3 style='text-align: center; margin-bottom: 0;'>Poker Night Tracker</h3>",
     unsafe_allow_html=True
@@ -115,7 +114,6 @@ st.markdown(
 
 st.subheader("Select Game Session")
 
-# Determine default selection
 if st.session_state["active_session_id"]:
     active_session = next(
         (s for s in sessions if s["id"] == st.session_state["active_session_id"]),
@@ -250,9 +248,11 @@ else:
 
     showdown_losers = []
     if street == "River" and hand_type != "No Showdown":
+        # Exclude winner from showdown loser options
+        showdown_options = [p for p in players_in_game if p != winner]
         showdown_losers = checkbox_grid(
             "Showdown Losers",
-            players_in_game,
+            showdown_options,
             key_prefix="losers",
             session_id=active_session["id"],
             columns=2
@@ -260,9 +260,11 @@ else:
 
     eliminated_players = []
     if all_in:
+        # Exclude winner from eliminated options
+        elim_options = [p for p in players_in_game if p != winner]
         eliminated_players = checkbox_grid(
             "Eliminated Player(s)",
-            players_in_game,
+            elim_options,
             key_prefix="elim",
             session_id=active_session["id"],
             columns=2
@@ -370,7 +372,6 @@ else:
 # ---------------------------------------------------------
 with st.expander("Session Leaderboard"):
 
-    # Build a stats dictionary for each player
     stats = {p: {
         "wins": 0,
         "sd_wins": 0,
@@ -380,7 +381,6 @@ with st.expander("Session Leaderboard"):
         "eliminated_hand": None
     } for p in players_in_game}
 
-    # Process hands in chronological order (oldest → newest)
     chronological = list(reversed(hands))
     total_hands = len(chronological)
 
@@ -398,11 +398,9 @@ with st.expander("Session Leaderboard"):
         if isinstance(eliminated, str):
             eliminated = [eliminated]
 
-        # 1. Wins
         if winner in stats:
             stats[winner]["wins"] += 1
 
-        # 2. Showdown stats
         is_showdown = (street == "River" and hand_type != "No Showdown")
         if is_showdown:
             if winner in stats:
@@ -413,16 +411,13 @@ with st.expander("Session Leaderboard"):
                 if p in stats:
                     stats[p]["sd_total"] += 1
 
-        # 3. Big Pots (M/L)
         if pot_size in ["M", "L"] and winner in stats:
             stats[winner]["big_pots"] += 1
 
-        # 4. Eliminated hand
         for p in eliminated:
             if p in stats and stats[p]["eliminated_hand"] is None:
                 stats[p]["eliminated_hand"] = idx
 
-        # 5. Folds
         for p in players_in_game:
             if p in h["players_in_game"]:
                 if (
@@ -432,7 +427,6 @@ with st.expander("Session Leaderboard"):
                 ):
                     stats[p]["folds"] += 1
 
-    # Display leaderboard table
     st.write("### 🏆 Session Leaderboard")
 
     leaderboard_rows = []

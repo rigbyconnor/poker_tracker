@@ -363,3 +363,91 @@ else:
                     line += f" — Eliminated: {', '.join(eliminated)}"
 
                 st.write(line)
+
+
+# ---------------------------------------------------------
+# 4. Session Leaderboard (inside expander)
+# ---------------------------------------------------------
+with st.expander("Session Leaderboard"):
+
+    # Build a stats dictionary for each player
+    stats = {p: {
+        "wins": 0,
+        "sd_wins": 0,
+        "sd_total": 0,
+        "big_pots": 0,
+        "folds": 0,
+        "eliminated_hand": None
+    } for p in players_in_game}
+
+    # Process hands in chronological order (oldest → newest)
+    chronological = list(reversed(hands))
+    total_hands = len(chronological)
+
+    for idx, h in enumerate(chronological, start=1):
+        winner = h["winner"]
+        street = h["street"]
+        hand_type = h["hand_type"]
+        pot_size = h["pot_size"]
+
+        showdown_losers = h.get("showdown_losers", [])
+        eliminated = h.get("eliminated_player", [])
+
+        if isinstance(showdown_losers, str):
+            showdown_losers = [showdown_losers]
+        if isinstance(eliminated, str):
+            eliminated = [eliminated]
+
+        # 1. Wins
+        if winner in stats:
+            stats[winner]["wins"] += 1
+
+        # 2. Showdown stats
+        is_showdown = (street == "River" and hand_type != "No Showdown")
+        if is_showdown:
+            if winner in stats:
+                stats[winner]["sd_wins"] += 1
+                stats[winner]["sd_total"] += 1
+
+            for p in showdown_losers:
+                if p in stats:
+                    stats[p]["sd_total"] += 1
+
+        # 3. Big Pots (M/L)
+        if pot_size in ["M", "L"] and winner in stats:
+            stats[winner]["big_pots"] += 1
+
+        # 4. Eliminated hand
+        for p in eliminated:
+            if p in stats and stats[p]["eliminated_hand"] is None:
+                stats[p]["eliminated_hand"] = idx
+
+        # 5. Folds
+        for p in players_in_game:
+            if p in h["players_in_game"]:
+                if (
+                    p != winner
+                    and p not in showdown_losers
+                    and p not in eliminated
+                ):
+                    stats[p]["folds"] += 1
+
+    # Display leaderboard table
+    st.write("### 🏆 Session Leaderboard")
+
+    leaderboard_rows = []
+    for p in players_in_game:
+        sd_total = stats[p]["sd_total"]
+        sd_win_pct = f"{round((stats[p]['sd_wins'] / sd_total) * 100)}%" if sd_total > 0 else "—"
+        elim = stats[p]["eliminated_hand"] if stats[p]["eliminated_hand"] else "—"
+
+        leaderboard_rows.append({
+            "Player": p,
+            "Wins 🏆": stats[p]["wins"],
+            "SD Win% 👎": sd_win_pct,
+            "Big Pots 💰": stats[p]["big_pots"],
+            "Folds 🪫": stats[p]["folds"],
+            "Eliminated 💀": elim
+        })
+
+    st.dataframe(leaderboard_rows, hide_index=True)

@@ -69,8 +69,43 @@ st.title("Poker Night Tracker")
 st.header("Log a Hand")
 
 # ---------------------------------------------------------
-# Players in Tonight's Game (we load it early for logic,
-# but we will DISPLAY it later, below Hand History)
+# We load players early, but DO NOT show the dropdown yet.
+# ---------------------------------------------------------
+players = load_players()
+player_names = [p["name"] for p in players]
+
+
+# ---------------------------------------------------------
+# Hand History (always visible, ABOVE the dropdown)
+# ---------------------------------------------------------
+st.header("Hand History")
+
+hands = supabase.table("hands").select("*").order("id", desc=True).execute().data
+
+if not hands:
+    st.info("No hands logged yet.")
+else:
+    for h in hands:
+        st.markdown(
+            f"""
+            <div style='padding:12px;border-radius:10px;background:#f7f7f7;margin-bottom:10px;'>
+                <strong>Winner:</strong> {h['winner']}<br>
+                <strong>Street:</strong> {h['street']}<br>
+                <strong>Hand:</strong> {h['hand_type']}<br>
+                <strong>Pot:</strong> {h['pot_size']}<br>
+                <strong>All-In:</strong> {h['all_in']}<br>
+                <strong>Eliminated:</strong> {h['eliminated_player']}<br>
+                <strong>Showdown Losers:</strong> {h['showdown_losers']}<br>
+                <strong>Game:</strong> {h['game_name']}<br>
+                <small>{h['created_at']}</small>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+# ---------------------------------------------------------
+# Players in Tonight's Game (ONLY dropdown, placed BELOW history)
 # ---------------------------------------------------------
 with st.expander("Players in Tonight's Game"):
     players_in_game = st.multiselect(
@@ -80,8 +115,9 @@ with st.expander("Players in Tonight's Game"):
         key="players_in_tonights_game"
     )
 
+
 # ---------------------------------------------------------
-# Log Hand fields (gated INSIDE the Log Hand section)
+# Log Hand fields (gated by the dropdown above)
 # ---------------------------------------------------------
 if not players_in_game:
     st.info("Select players in tonight's game to begin logging a hand.")
@@ -155,49 +191,6 @@ else:
         supabase.table("hands").insert(data).execute()
         st.success("Hand logged!")
         st.rerun()
-
-
-# ---------------------------------------------------------
-# Hand History (now ABOVE the collapsible sections)
-# ---------------------------------------------------------
-st.header("Hand History")
-
-hands = supabase.table("hands").select("*").order("id", desc=True).execute().data
-
-if not hands:
-    st.info("No hands logged yet.")
-else:
-    for h in hands:
-        st.markdown(
-            f"""
-            <div style='padding:12px;border-radius:10px;background:#f7f7f7;margin-bottom:10px;'>
-                <strong>Winner:</strong> {h['winner']}<br>
-                <strong>Street:</strong> {h['street']}<br>
-                <strong>Hand:</strong> {h['hand_type']}<br>
-                <strong>Pot:</strong> {h['pot_size']}<br>
-                <strong>All-In:</strong> {h['all_in']}<br>
-                <strong>Eliminated:</strong> {h['eliminated_player']}<br>
-                <strong>Showdown Losers:</strong> {h['showdown_losers']}<br>
-                <strong>Game:</strong> {h['game_name']}<br>
-                <small>{h['created_at']}</small>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-
-# ---------------------------------------------------------
-# DISPLAY the Players dropdown BELOW Hand History
-# (the logic already ran above)
-# ---------------------------------------------------------
-st.markdown("### Players in Tonight's Game")
-with st.expander("Players in Tonight's Game"):
-    st.multiselect(
-        "Select players in tonight's game:",
-        options=player_names,
-        default=players_in_game,
-        key="players_in_tonights_game_display"
-    )
 
 
 # ---------------------------------------------------------

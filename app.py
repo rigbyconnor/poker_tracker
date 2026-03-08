@@ -307,10 +307,8 @@ if st.button("Submit Hand", type="primary"):
     supabase.table("hands").insert(data).execute()
     st.success("Hand logged!")
     st.rerun()
-
-
-# ---------------------------------------------------------
-# 4. Hand History (with Edit + Delete)
+    # ---------------------------------------------------------
+# 4. Hand History (with Three‑Dot Menu)
 # ---------------------------------------------------------
 st.header("Hand History")
 
@@ -343,7 +341,7 @@ else:
         return [p for p in players_in_game if p not in eliminated_before]
 
     # ---------------------------------------------------------
-    # Render a single hand (with edit/delete)
+    # Render a single hand (with ⋮ menu)
     # ---------------------------------------------------------
     def render_hand(h, hand_number):
         winner = h["winner"]
@@ -359,6 +357,7 @@ else:
         if isinstance(eliminated, str):
             eliminated = [eliminated]
 
+        # Hand summary line
         line = (
             f"**Hand #{hand_number} — {winner} won with {hand_type} "
             f"on the {street} (Pot: {pot_size})**"
@@ -370,18 +369,21 @@ else:
         if eliminated:
             line += f" — Eliminated: {', '.join(eliminated)}"
 
-        st.write(line)
+        # Layout: hand text on left, ⋮ menu on right
+        row = st.columns([10, 1])
+        row[0].write(line)
 
-        # Buttons
-        colA, colB = st.columns([1, 1])
+        with row[1]:
+            with st.popover("⋮"):
+                st.write("### Actions")
 
-        with colA:
-            if st.button(f"Edit Hand #{hand_number}", key=f"edit_{h['id']}"):
-                st.session_state["editing_hand"] = h["id"]
+                # Edit button
+                if st.button(f"Edit Hand #{hand_number}", key=f"edit_{h['id']}"):
+                    st.session_state["editing_hand"] = h["id"]
 
-        with colB:
-            if st.button(f"Delete Hand #{hand_number}", key=f"delete_{h['id']}"):
-                st.session_state["confirm_delete"] = h["id"]
+                # Delete button
+                if st.button(f"Delete Hand #{hand_number}", key=f"delete_{h['id']}"):
+                    st.session_state["confirm_delete"] = h["id"]
 
         # Delete confirmation
         if st.session_state.get("confirm_delete") == h["id"]:
@@ -555,6 +557,7 @@ with st.expander("Session Leaderboard"):
             if p in stats and stats[p]["eliminated_hand"] is None:
                 stats[p]["eliminated_hand"] = idx
 
+        # Count folds
         for p in players_in_game:
             if p in h["players_in_game"]:
                 if (

@@ -63,13 +63,101 @@ def checkbox_grid(label, options, key_prefix, columns=2):
 
 
 # ---------------------------------------------------------
-# UI: Log a hand (always shown at the top)
+# UI: Log a hand (always at the top)
 # ---------------------------------------------------------
 st.title("Poker Night Tracker")
 st.header("Log a Hand")
 
 # ---------------------------------------------------------
-# Hand History (now ABOVE Players sections)
+# Players in Tonight's Game (collapsible dropdown BELOW Log Hand)
+# ---------------------------------------------------------
+with st.expander("Players in Tonight's Game"):
+    players_in_game = st.multiselect(
+        "Select players in tonight's game:",
+        options=player_names,
+        default=[],
+        key="players_in_tonights_game"
+    )
+
+# ---------------------------------------------------------
+# Log Hand fields (gated INSIDE the Log Hand section)
+# ---------------------------------------------------------
+if not players_in_game:
+    st.info("Select players in tonight's game to begin logging a hand.")
+else:
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("Winner")
+        winner = st.radio("", players_in_game, key="winner_radio")
+
+    with col2:
+        st.subheader("Street")
+        streets = ["Preflop", "Flop", "Turn", "River"]
+        street = st.radio("", streets, key="street_radio")
+
+    col3, col4 = st.columns(2)
+
+    with col3:
+        st.subheader("Hand Type")
+        hand_types = [
+            "High Card", "Pair", "Two Pair", "Trips", "Straight",
+            "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
+        ]
+        hand_type = st.radio("", hand_types, key="handtype_radio")
+
+    with col4:
+        st.subheader("Pot Size")
+        pot_sizes = ["S", "M", "L"]
+        pot_size = st.radio("", pot_sizes, key="potsize_radio")
+
+    st.subheader("All-In")
+    all_in = st.checkbox("All-In", key="allin_toggle")
+
+    showdown_losers = []
+    if street == "River" and hand_type != "No Showdown":
+        showdown_losers = checkbox_grid(
+            "Showdown Losers",
+            players_in_game,
+            key_prefix="losers",
+            columns=2
+        )
+
+    eliminated_player = None
+    if all_in:
+        eliminated_list = checkbox_grid(
+            "Eliminated Player",
+            players_in_game,
+            key_prefix="elim",
+            columns=2
+        )
+        if len(eliminated_list) > 0:
+            eliminated_player = eliminated_list[0]
+
+    st.subheader("Game Name")
+    game_name = st.text_input("", value=f"{datetime.now():%B %Y} Poker Night")
+
+    if st.button("Submit Hand", type="primary"):
+        data = {
+            "hand_number": int(datetime.utcnow().timestamp()),
+            "winner": winner,
+            "street": street,
+            "hand_type": hand_type,
+            "pot_size": pot_size,
+            "all_in": all_in,
+            "eliminated_player": eliminated_player,
+            "showdown_losers": showdown_losers,
+            "players_in_game": players_in_game,
+            "game_name": game_name,
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        supabase.table("hands").insert(data).execute()
+        st.success("Hand logged!")
+        st.rerun()
+
+
+# ---------------------------------------------------------
+# Hand History (now ABOVE the collapsible sections)
 # ---------------------------------------------------------
 st.header("Hand History")
 
@@ -95,117 +183,6 @@ else:
             """,
             unsafe_allow_html=True,
         )
-
-
-# ---------------------------------------------------------
-# Players in Tonight's Game (collapsible dropdown)
-# ---------------------------------------------------------
-with st.expander("Players in Tonight's Game"):
-    players_in_game = st.multiselect(
-        "Select players in tonight's game:",
-        options=player_names,
-        default=[],
-        key="players_in_tonights_game"
-    )
-
-# If no players selected, stop here
-if not players_in_game:
-    st.info("Select players in tonight's game to begin logging a hand.")
-    st.stop()
-
-
-# ---------------------------------------------------------
-# Log Hand fields (only after players selected)
-# ---------------------------------------------------------
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("Winner")
-    winner = st.radio("", players_in_game, key="winner_radio")
-
-with col2:
-    st.subheader("Street")
-    streets = ["Preflop", "Flop", "Turn", "River"]
-    street = st.radio("", streets, key="street_radio")
-
-col3, col4 = st.columns(2)
-
-with col3:
-    st.subheader("Hand Type")
-    hand_types = [
-        "High Card", "Pair", "Two Pair", "Trips", "Straight",
-        "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
-    ]
-    hand_type = st.radio("", hand_types, key="handtype_radio")
-
-with col4:
-    st.subheader("Pot Size")
-    pot_sizes = ["S", "M", "L"]
-    pot_size = st.radio("", pot_sizes, key="potsize_radio")
-
-
-# ---------------------------------------------------------
-# All-In toggle
-# ---------------------------------------------------------
-st.subheader("All-In")
-all_in = st.checkbox("All-In", key="allin_toggle")
-
-
-# ---------------------------------------------------------
-# Conditional: Showdown Losers
-# ---------------------------------------------------------
-showdown_losers = []
-if street == "River" and hand_type != "No Showdown":
-    showdown_losers = checkbox_grid(
-        "Showdown Losers",
-        players_in_game,
-        key_prefix="losers",
-        columns=2
-    )
-
-
-# ---------------------------------------------------------
-# Conditional: Eliminated Player
-# ---------------------------------------------------------
-eliminated_player = None
-if all_in:
-    eliminated_list = checkbox_grid(
-        "Eliminated Player",
-        players_in_game,
-        key_prefix="elim",
-        columns=2
-    )
-    if len(eliminated_list) > 0:
-        eliminated_player = eliminated_list[0]
-
-
-# ---------------------------------------------------------
-# Game Name
-# ---------------------------------------------------------
-st.subheader("Game Name")
-game_name = st.text_input("", value=f"{datetime.now():%B %Y} Poker Night")
-
-
-# ---------------------------------------------------------
-# Submit hand
-# ---------------------------------------------------------
-if st.button("Submit Hand", type="primary"):
-    data = {
-        "hand_number": int(datetime.utcnow().timestamp()),
-        "winner": winner,
-        "street": street,
-        "hand_type": hand_type,
-        "pot_size": pot_size,
-        "all_in": all_in,
-        "eliminated_player": eliminated_player,
-        "showdown_losers": showdown_losers,
-        "players_in_game": players_in_game,
-        "game_name": game_name,
-        "created_at": datetime.utcnow().isoformat(),
-    }
-    supabase.table("hands").insert(data).execute()
-    st.success("Hand logged!")
-    st.rerun()
 
 
 # ---------------------------------------------------------

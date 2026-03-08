@@ -60,7 +60,7 @@ def load_hands_for_session(session_name):
 
 
 # ---------------------------------------------------------
-# Checkbox grid helper (session‑namespaced keys)
+# Checkbox grid helper
 # ---------------------------------------------------------
 def checkbox_grid(label, options, key_prefix, session_id, columns=2, prechecked=None):
     st.write(f"### {label}")
@@ -109,7 +109,6 @@ if "active_session_id" not in st.session_state:
 # ---------------------------------------------------------
 # 1. Session Selector
 # ---------------------------------------------------------
-
 st.markdown(
     "<h3 style='text-align: center; margin-bottom: 0;'>Poker Night Tracker</h3>",
     unsafe_allow_html=True
@@ -308,7 +307,7 @@ if st.button("Submit Hand", type="primary"):
     st.success("Hand logged!")
     st.rerun()
     # ---------------------------------------------------------
-# 4. Hand History (with Three‑Dot Menu)
+# 4. Hand History (Tap‑to‑Expand Actions)
 # ---------------------------------------------------------
 st.header("Hand History")
 
@@ -341,151 +340,164 @@ else:
         return [p for p in players_in_game if p not in eliminated_before]
 
     # ---------------------------------------------------------
-    # Render a single hand (with tap menu)
+    # Render a single hand (tap‑to‑expand)
     # ---------------------------------------------------------
     def render_hand(h, hand_number):
-    winner = h["winner"]
-    street = h["street"]
-    hand_type = h["hand_type"]
-    pot_size = h["pot_size"]
+        winner = h["winner"]
+        street = h["street"]
+        hand_type = h["hand_type"]
+        pot_size = h["pot_size"]
 
-    showdown_losers = h.get("showdown_losers") or []
-    eliminated = h.get("eliminated_player") or []
+        showdown_losers = h.get("showdown_losers") or []
+        eliminated = h.get("eliminated_player") or []
 
-    if isinstance(showdown_losers, str):
-        showdown_losers = [showdown_losers]
-    if isinstance(eliminated, str):
-        eliminated = [eliminated]
+        if isinstance(showdown_losers, str):
+            showdown_losers = [showdown_losers]
+        if isinstance(eliminated, str):
+            eliminated = [eliminated]
 
-    # Build summary line
-    line = (
-        f"Hand #{hand_number} — {winner} won with {hand_type} "
-        f"on the {street} (Pot: {pot_size})"
-    )
+        # Build summary line
+        line = (
+            f"Hand #{hand_number} — {winner} won with {hand_type} "
+            f"on the {street} (Pot: {pot_size})"
+        )
 
-    if showdown_losers:
-        line += f" — Showdown Losers: {', '.join(showdown_losers)}"
+        if showdown_losers:
+            line += f" — Showdown Losers: {', '.join(showdown_losers)}"
 
-    if eliminated:
-        line += f" — Eliminated: {', '.join(eliminated)}"
+        if eliminated:
+            line += f" — Eliminated: {', '.join(eliminated)}"
 
-    # Tappable row
-    if st.button(line, key=f"tap_{h['id']}", use_container_width=True):
-        # Toggle open/close
+        # Tappable row
+        if st.button(line, key=f"tap_{h['id']}", use_container_width=True):
+            # Toggle open/close
+            if st.session_state.get("open_hand") == h["id"]:
+                st.session_state["open_hand"] = None
+            else:
+                st.session_state["open_hand"] = h["id"]
+
+        # If tapped, show actions + edit form
         if st.session_state.get("open_hand") == h["id"]:
-            st.session_state["open_hand"] = None
-        else:
-            st.session_state["open_hand"] = h["id"]
+            with st.expander(f"Actions for Hand #{hand_number}", expanded=True):
 
-    # If tapped, show actions + edit form
-    if st.session_state.get("open_hand") == h["id"]:
-        with st.expander(f"Actions for Hand #{hand_number}", expanded=True):
+                # Delete
+                if st.button(f"Delete Hand #{hand_number}", key=f"delete_{h['id']}"):
+                    st.session_state["confirm_delete"] = h["id"]
 
-            # Delete
-            if st.button(f"Delete Hand #{hand_number}", key=f"delete_{h['id']}"):
-                st.session_state["confirm_delete"] = h["id"]
+                if st.session_state.get("confirm_delete") == h["id"]:
+                    st.warning("Are you sure you want to delete this hand?")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("Yes, Delete", key=f"yes_delete_{h['id']}"):
+                            supabase.table("hands").delete().eq("id", h["id"]).execute()
+                            st.success("Hand deleted.")
+                            st.session_state["confirm_delete"] = None
+                            st.session_state["open_hand"] = None
+                            st.rerun()
+                    with c2:
+                        if st.button("Cancel", key=f"cancel_delete_{h['id']}"):
+                            st.session_state["confirm_delete"] = None
 
-            if st.session_state.get("confirm_delete") == h["id"]:
-                st.warning("Are you sure you want to delete this hand?")
-                c1, c2 = st.columns(2)
-                with c1:
-                    if st.button("Yes, Delete", key=f"yes_delete_{h['id']}"):
-                        supabase.table("hands").delete().eq("id", h["id"]).execute()
-                        st.success("Hand deleted.")
-                        st.session_state["confirm_delete"] = None
-                        st.session_state["open_hand"] = None
-                        st.rerun()
-                with c2:
-                    if st.button("Cancel", key=f"cancel_delete_{h['id']}"):
-                        st.session_state["confirm_delete"] = None
+                # Edit
+                if st.button(f"Edit Hand #{hand_number}", key=f"edit_{h['id']}"):
+                    st.session_state["editing_hand"] = h["id"]
 
-            # Edit
-            if st.button(f"Edit Hand #{hand_number}", key=f"edit_{h['id']}"):
-                st.session_state["editing_hand"] = h["id"]
+                # Edit form
+                if st.session_state.get("editing_hand") == h["id"]:
+                    with st.expander(f"Editing Hand #{hand_number}", expanded=True):
 
-            # Edit form
-            if st.session_state.get("editing_hand") == h["id"]:
-                with st.expander(f"Editing Hand #{hand_number}", expanded=True):
+                        alive_at_time = get_alive_players_at_hand(h["id"])
 
-                    alive_at_time = get_alive_players_at_hand(h["id"])
-
-                    new_winner = st.radio(
-                        "Winner",
-                        alive_at_time,
-                        index=alive_at_time.index(h["winner"]),
-                        key=f"edit_winner_{h['id']}"
-                    )
-
-                    streets = ["Preflop", "Flop", "Turn", "River"]
-                    new_street = st.radio(
-                        "Street",
-                        streets,
-                        index=streets.index(h["street"]),
-                        key=f"edit_street_{h['id']}"
-                    )
-
-                    hand_types = [
-                        "High Card", "Pair", "Two Pair", "Trips", "Straight",
-                        "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
-                    ]
-                    new_hand_type = st.radio(
-                        "Hand Type",
-                        hand_types,
-                        index=hand_types.index(h["hand_type"]),
-                        key=f"edit_handtype_{h['id']}"
-                    )
-
-                    pot_sizes = ["S", "M", "L"]
-                    new_pot_size = st.radio(
-                        "Pot Size",
-                        pot_sizes,
-                        index=pot_sizes.index(h["pot_size"]),
-                        key=f"edit_potsize_{h['id']}"
-                    )
-
-                    new_all_in = st.checkbox(
-                        "All-In",
-                        value=h["all_in"],
-                        key=f"edit_allin_{h['id']}"
-                    )
-
-                    new_showdown_losers = []
-                    if new_street == "River" and new_hand_type != "No Showdown":
-                        loser_options = [p for p in alive_at_time if p != new_winner]
-                        new_showdown_losers = checkbox_grid(
-                            "Showdown Losers",
-                            loser_options,
-                            key_prefix="edit_losers",
-                            session_id=h["id"],
-                            prechecked=h.get("showdown_losers") or []
+                        new_winner = st.radio(
+                            "Winner",
+                            alive_at_time,
+                            index=alive_at_time.index(h["winner"]),
+                            key=f"edit_winner_{h['id']}"
                         )
 
-                    new_eliminated = []
-                    if new_all_in:
-                        elim_options = [p for p in alive_at_time if p != new_winner]
-                        new_eliminated = checkbox_grid(
-                            "Eliminated Player(s)",
-                            elim_options,
-                            key_prefix="edit_elim",
-                            session_id=h["id"],
-                            prechecked=h.get("eliminated_player") or []
+                        streets = ["Preflop", "Flop", "Turn", "River"]
+                        new_street = st.radio(
+                            "Street",
+                            streets,
+                            index=streets.index(h["street"]),
+                            key=f"edit_street_{h['id']}"
                         )
 
-                    if st.button("Save Changes", key=f"save_edit_{h['id']}"):
-                        updated = {
-                            "winner": new_winner,
-                            "street": new_street,
-                            "hand_type": new_hand_type,
-                            "pot_size": new_pot_size,
-                            "all_in": new_all_in,
-                            "showdown_losers": new_showdown_losers,
-                            "eliminated_player": new_eliminated,
-                        }
-                        supabase.table("hands").update(updated).eq("id", h["id"]).execute()
-                        st.success("Hand updated.")
-                        st.session_state["editing_hand"] = None
-                        st.session_state["open_hand"] = None
-                        st.rerun()
+                        hand_types = [
+                            "High Card", "Pair", "Two Pair", "Trips", "Straight",
+                            "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
+                        ]
+                        new_hand_type = st.radio(
+                            "Hand Type",
+                            hand_types,
+                            index=hand_types.index(h["hand_type"]),
+                            key=f"edit_handtype_{h['id']}"
+                        )
+
+                        pot_sizes = ["S", "M", "L"]
+                        new_pot_size = st.radio(
+                            "Pot Size",
+                            pot_sizes,
+                            index=pot_sizes.index(h["pot_size"]),
+                            key=f"edit_potsize_{h['id']}"
+                        )
+
+                        new_all_in = st.checkbox(
+                            "All-In",
+                            value=h["all_in"],
+                            key=f"edit_allin_{h['id']}"
+                        )
+
+                        new_showdown_losers = []
+                        if new_street == "River" and new_hand_type != "No Showdown":
+                            loser_options = [p for p in alive_at_time if p != new_winner]
+                            new_showdown_losers = checkbox_grid(
+                                "Showdown Losers",
+                                loser_options,
+                                key_prefix="edit_losers",
+                                session_id=h["id"],
+                                prechecked=h.get("showdown_losers") or []
+                            )
+
+                        new_eliminated = []
+                        if new_all_in:
+                            elim_options = [p for p in alive_at_time if p != new_winner]
+                            new_eliminated = checkbox_grid(
+                                "Eliminated Player(s)",
+                                elim_options,
+                                key_prefix="edit_elim",
+                                session_id=h["id"],
+                                prechecked=h.get("eliminated_player") or []
+                            )
+
+                        if st.button("Save Changes", key=f"save_edit_{h['id']}"):
+                            updated = {
+                                "winner": new_winner,
+                                "street": new_street,
+                                "hand_type": new_hand_type,
+                                "pot_size": new_pot_size,
+                                "all_in": new_all_in,
+                                "showdown_losers": new_showdown_losers,
+                                "eliminated_player": new_eliminated,
+                            }
+                            supabase.table("hands").update(updated).eq("id", h["id"]).execute()
+                            st.success("Hand updated.")
+                            st.session_state["editing_hand"] = None
+                            st.session_state["open_hand"] = None
+                            st.rerun()
+
+    # Render recent hands
+    for index, h in enumerate(recent_hands):
+        hand_number = total_hands - index
+        render_hand(h, hand_number)
+
+    # Older hands
+    if older_hands:
+        with st.expander("Show Full Hand History"):
+            for idx, h in enumerate(older_hands, start=6):
+                hand_number = total_hands - (idx - 1)
+                render_hand(h, hand_number)
+
 
 # ---------------------------------------------------------
 # 5. Session Leaderboard

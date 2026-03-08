@@ -13,7 +13,7 @@ st.set_page_config(page_title="Poker Night Tracker", layout="centered")
 
 
 # ---------------------------------------------------------
-# Database helpers
+# Helpers
 # ---------------------------------------------------------
 def load_players():
     response = supabase.table("players").select("*").order("name").execute()
@@ -24,19 +24,38 @@ def add_player(name):
     supabase.table("players").insert({"name": name}).execute()
 
 
-CORE_PLAYERS = ["Michael L.", "Connor R.", "Devin P.", "Cody R.", "Preston R."]
+def load_sessions():
+    response = (
+        supabase.table("sessions")
+        .select("*")
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return response.data if response.data else []
 
 
-def ensure_core_players():
-    existing = [p["name"] for p in load_players()]
-    for name in CORE_PLAYERS:
-        if name not in existing:
-            add_player(name)
+def create_session(name, players):
+    response = (
+        supabase.table("sessions")
+        .insert({"name": name, "players": players})
+        .execute()
+    )
+    return response.data[0]  # return created session row
 
 
-ensure_core_players()
-players = load_players()
-player_names = [p["name"] for p in players]
+def update_session_players(session_id, players):
+    supabase.table("sessions").update({"players": players}).eq("id", session_id).execute()
+
+
+def load_hands_for_session(session_name):
+    response = (
+        supabase.table("hands")
+        .select("*")
+        .eq("game_name", session_name)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return response.data if response.data else []
 
 
 # ---------------------------------------------------------
@@ -63,18 +82,82 @@ def checkbox_grid(label, options, key_prefix, columns=2):
 
 
 # ---------------------------------------------------------
-# 1. Players in Tonight's Game (TOP OF PAGE)
+# Load base data
+# ---------------------------------------------------------
+players = load_players()
+player_names = [p["name"] for p in players]
+
+sessions = load_sessions()
+session_names = [s["name"] for s in sessions]
+
+# Add "Create New Session…" option
+CREATE_NEW = "➕ Create New Session…"
+session_dropdown_options = session_names + [CREATE_NEW]
+
+
+# ---------------------------------------------------------
+# Remember last session
+# ---------------------------------------------------------
+if "active_session_id" not in st.session_state:
+    st.session_state["active_session_id"] = None
+
+
+# ---------------------------------------------------------
+# 1. Session Selector
 # ---------------------------------------------------------
 st.title("Poker Night Tracker")
 
-with st.expander("Players in Tonight's Game", expanded=True):
-    st.multiselect(
-        "Select players in tonight's game:",
+st.subheader("Select Game Session")
+
+# Determine default selection
+if st.session_state["active_session_id"]:
+    active_session = next((s for s in sessions if s["id"] == st.session_state["active_session_id"]), None)
+    default_name = active_session["name"] if active_session else None
+else:
+    default_name = None
+
+selected_session_name = st.selectbox(
+    "Game Session",
+    session_dropdown_options,
+    index=session_dropdown_options.index(default_name) if default_name in session_dropdown_options else 0,
+)
+
+
+# ---------------------------------------------------------
+# Create New Session Flow
+# ---------------------------------------------------------
+if selected_session_name == CREATE_NEW:
+    st.subheader("Create New Session")
+
+    # Auto-suggest name
+    suggested_name = f"{datetime.now():%B %Y} Poker Night"
+    new_session_name = st.text_input("Session Name", value=suggested_name)
+
+    new_session_players = st.multiselect(
+        "Select players for this session:",
         options=player_names,
-        key="players_in_tonights_game"
     )
 
-players_in_game = st.session_state["players_in_tonights_game"]
+    if st.button("Create Session", type="primary"):
+        if new_session_name.strip() and new_session_players:
+            created = create_session(new_session_name.strip(), new_session_players)
+            st.session_state["active_session_id"] = created["id"]
+            st.success("Session created!")
+            st.rerun()
+
+    st.stop()  # Stop here until session is created
+
+
+# ---------------------------------------------------------
+# Load selected session
+# ---------------------------------------------------------
+active_session = next((s for s in sessions if s["name"] == selected_session_name), None)
+
+if active_session:
+    st.session_state["active_session_id"] = active_session["id"]
+    players_in_game = active_session["players"]
+else:
+    players_in_game = []
 
 
 # ---------------------------------------------------------
@@ -82,8 +165,12 @@ players_in_game = st.session_state["players_in_tonights_game"]
 # ---------------------------------------------------------
 st.header("Log a Hand")
 
+if not active_session:
+    st.info("Select or create a session to begin.")
+    st.stop()
+
 if not players_in_game:
-    st.info("Select players in tonight's game to begin logging a hand.")
+    st.info("This session has no players. Edit the session to add players.")
 else:
     col1, col2 = st.columns(2)
 
@@ -134,9 +221,6 @@ else:
         if len(eliminated_list) > 0:
             eliminated_player = eliminated_list[0]
 
-    st.subheader("Game Name")
-    game_name = st.text_input("", value=f"{datetime.now():%B %Y} Poker Night")
-
     if st.button("Submit Hand", type="primary"):
         data = {
             "hand_number": int(datetime.utcnow().timestamp()),
@@ -148,7 +232,7 @@ else:
             "eliminated_player": eliminated_player,
             "showdown_losers": showdown_losers,
             "players_in_game": players_in_game,
-            "game_name": game_name,
+            "game_name": active_session["name"],
             "created_at": datetime.utcnow().isoformat(),
         }
         supabase.table("hands").insert(data).execute()
@@ -157,18 +241,11 @@ else:
 
 
 # ---------------------------------------------------------
-# 3. Hand History (simple feed with details)
+# 3. Hand History
 # ---------------------------------------------------------
 st.header("Hand History")
 
-hands = (
-    supabase.table("hands")
-    .select("*")
-    .eq("game_name", game_name if "game_name" in locals() else "")
-    .order("created_at", desc=True)
-    .execute()
-    .data
-)
+hands = load_hands_for_session(active_session["name"])
 
 if not hands:
     st.info("No hands logged yet.")

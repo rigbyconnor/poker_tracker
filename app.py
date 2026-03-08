@@ -1,3 +1,8 @@
+# ============================
+# ======== BLOCK 1 ===========
+# ===== START OF BLOCK 1 =====
+# ============================
+
 import streamlit as st
 from supabase import create_client
 from datetime import datetime
@@ -307,79 +312,29 @@ if st.button("Submit Hand", type="primary"):
     st.success("Hand logged!")
     st.rerun()
 
+# ============================
+# ===== END OF BLOCK 1 =======
+# ============================
+
+
+# ============================
+# ======== BLOCK 2 ===========
+# ===== START OF BLOCK 2 =====
+# ============================
+
 # ---------------------------------------------------------
-# Admin Tools (Delete Player / Delete Session)
-# ---------------------------------------------------------
-with st.expander("Admin Tools (Danger Zone)"):
-
-    st.write("### Delete a Global Player")
-    player_to_delete = st.selectbox(
-        "Select player to delete:",
-        player_names,
-        key="delete_player_select"
-    )
-
-    if st.button("Delete Player", key="delete_player_btn"):
-        st.session_state["confirm_delete_player"] = player_to_delete
-
-    if st.session_state.get("confirm_delete_player") == player_to_delete:
-        st.warning(f"Are you sure you want to delete '{player_to_delete}' from the global list?")
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("Yes, Delete Player", key="confirm_delete_player_yes"):
-                supabase.table("players").delete().eq("name", player_to_delete).execute()
-                st.success(f"Deleted player '{player_to_delete}'.")
-                st.session_state["confirm_delete_player"] = None
-                st.rerun()
-        with c2:
-            if st.button("Cancel", key="confirm_delete_player_no"):
-                st.session_state["confirm_delete_player"] = None
-
-    st.markdown("---")
-
-    st.write("### Delete an Entire Session")
-    session_to_delete = st.selectbox(
-        "Select session to delete:",
-        session_names,
-        key="delete_session_select"
-    )
-
-    if st.button("Delete Session", key="delete_session_btn"):
-        st.session_state["confirm_delete_session"] = session_to_delete
-
-    if st.session_state.get("confirm_delete_session") == session_to_delete:
-        st.warning(f"Delete session '{session_to_delete}' and ALL hands in it?")
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("Yes, Delete Session", key="confirm_delete_session_yes"):
-                # Delete all hands first
-                supabase.table("hands").delete().eq("game_name", session_to_delete).execute()
-                # Delete the session record
-                supabase.table("sessions").delete().eq("name", session_to_delete).execute()
-
-                st.success(f"Session '{session_to_delete}' deleted.")
-                st.session_state["confirm_delete_session"] = None
-                st.session_state["active_session_id"] = None
-                st.rerun()
-        with c2:
-            if st.button("Cancel", key="confirm_delete_session_no"):
-                st.session_state["confirm_delete_session"] = None
-    # ---------------------------------------------------------
 # 4. Hand History (Tap‑to‑Expand Actions)
 # ---------------------------------------------------------
 st.header("Hand History")
 
-# All hands go inside a single expander
 with st.expander("Show Full Hand History", expanded=False):
 
     total_hands = len(hands)
 
-    # ---------------------------------------------------------
-    # Helper: compute historical alive players for a given hand
-    # ---------------------------------------------------------
+    # Helper: historical alive players
     def get_alive_players_at_hand(target_hand_id):
         eliminated_before = set()
-        chronological = list(reversed(hands))  # oldest → newest
+        chronological = list(reversed(hands))
 
         for h in chronological:
             if h["id"] == target_hand_id:
@@ -392,9 +347,7 @@ with st.expander("Show Full Hand History", expanded=False):
 
         return [p for p in players_in_game if p not in eliminated_before]
 
-    # ---------------------------------------------------------
-    # Render a single hand (tap‑to‑expand)
-    # ---------------------------------------------------------
+    # Render a single hand
     def render_hand(h, hand_number):
         winner = h["winner"]
         street = h["street"]
@@ -409,7 +362,6 @@ with st.expander("Show Full Hand History", expanded=False):
         if isinstance(eliminated, str):
             eliminated = [eliminated]
 
-        # Build summary line
         line = (
             f"Hand #{hand_number} — {winner} won with {hand_type} "
             f"on the {street} (Pot: {pot_size})"
@@ -417,19 +369,14 @@ with st.expander("Show Full Hand History", expanded=False):
 
         if showdown_losers:
             line += f" — Showdown Losers: {', '.join(showdown_losers)}"
-
         if eliminated:
             line += f" — Eliminated: {', '.join(eliminated)}"
 
-        # Tappable row
         if st.button(line, key=f"tap_{h['id']}", use_container_width=True):
-            # Toggle open/close
-            if st.session_state.get("open_hand") == h["id"]:
-                st.session_state["open_hand"] = None
-            else:
-                st.session_state["open_hand"] = h["id"]
+            st.session_state["open_hand"] = (
+                None if st.session_state.get("open_hand") == h["id"] else h["id"]
+            )
 
-        # If tapped, show actions + edit form
         if st.session_state.get("open_hand") == h["id"]:
             with st.expander(f"Actions for Hand #{hand_number}", expanded=True):
 
@@ -455,7 +402,6 @@ with st.expander("Show Full Hand History", expanded=False):
                 if st.button(f"Edit Hand #{hand_number}", key=f"edit_{h['id']}"):
                     st.session_state["editing_hand"] = h["id"]
 
-                # Edit form
                 if st.session_state.get("editing_hand") == h["id"]:
                     with st.expander(f"Editing Hand #{hand_number}", expanded=True):
 
@@ -539,7 +485,7 @@ with st.expander("Show Full Hand History", expanded=False):
                             st.session_state["open_hand"] = None
                             st.rerun()
 
-    # Render ALL hands inside the expander
+    # Render ALL hands
     for index, h in enumerate(hands):
         hand_number = total_hands - index
         render_hand(h, hand_number)
@@ -602,25 +548,4 @@ with st.expander("Session Leaderboard"):
                 if (
                     p != winner
                     and p not in showdown_losers
-                    and p not in eliminated
-                ):
-                    stats[p]["folds"] += 1
-
-    st.write("### 🏆 Session Leaderboard")
-
-    leaderboard_rows = []
-    for p in players_in_game:
-        sd_total = stats[p]["sd_total"]
-        sd_win_pct = f"{round((stats[p]['sd_wins'] / sd_total) * 100)}%" if sd_total > 0 else "—"
-        elim = stats[p]["eliminated_hand"] if stats[p]["eliminated_hand"] else "—"
-
-        leaderboard_rows.append({
-            "Player": p,
-            "Wins 🏆": stats[p]["wins"],
-            "SD Win% 👎": sd_win_pct,
-            "Big Pots 💰": stats[p]["big_pots"],
-            "Folds 🪫": stats[p]["folds"],
-            "Eliminated 💀": elim
-        })
-
-    st.dataframe(leaderboard_rows, hide_index=True)
+                    and p not

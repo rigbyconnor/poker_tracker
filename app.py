@@ -172,7 +172,7 @@ else:
 
 
 # ---------------------------------------------------------
-# Edit Session Players (with duplicate protection)
+# Edit Session Players
 # ---------------------------------------------------------
 with st.expander("Edit Session Players"):
 
@@ -312,8 +312,8 @@ else:
         hand_type = h["hand_type"]
         pot_size = h["pot_size"]
 
-        showdown_losers = h.get("showdown_losers", [])
-        eliminated = h.get("eliminated_player", [])
+        showdown_losers = h.get("showdown_losers") or []
+        eliminated = h.get("eliminated_player") or []
 
         if isinstance(eliminated, str):
             eliminated = [eliminated]
@@ -343,8 +343,8 @@ else:
                 hand_type = h["hand_type"]
                 pot_size = h["pot_size"]
 
-                showdown_losers = h.get("showdown_losers", [])
-                eliminated = h.get("eliminated_player", [])
+                showdown_losers = h.get("showdown_losers") or []
+                eliminated = h.get("eliminated_player") or []
 
                 if isinstance(eliminated, str):
                     eliminated = [eliminated]
@@ -390,8 +390,8 @@ with st.expander("Session Leaderboard"):
         hand_type = h["hand_type"]
         pot_size = h["pot_size"]
 
-        showdown_losers = h.get("showdown_losers", [])
-        eliminated = h.get("eliminated_player", [])
+        showdown_losers = h.get("showdown_losers") or []
+        eliminated = h.get("eliminated_player") or []
 
         if isinstance(showdown_losers, str):
             showdown_losers = [showdown_losers]

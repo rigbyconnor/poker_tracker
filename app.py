@@ -534,7 +534,7 @@ with st.expander("Session Game Stats"):
                 "elim_wins": 0,
                 "busted_on_hand": None,
                 "busted_by": None,
-                "aggressive_wins": 0,   # NEW
+                "aggressive_wins": 0,
                 "current_win_streak": 0,
                 "current_loss_streak": 0,
                 "max_win_streak": 0,
@@ -672,11 +672,13 @@ with st.expander("Session Game Stats"):
         c5.metric("Elimination Rate", elim_pct)
 
         # ---------------------------------------------------------
-        # Session Leaderboard (Integrated Here)
+        # Session Leaderboard (Markdown version)
         # ---------------------------------------------------------
         st.subheader("Session Leaderboard")
 
-        leaderboard_rows = []
+        md = "| Player | Hands Played | Hands Won | Folds | Win % | SD Win % | KOs | Busted On |\n"
+        md += "|--------|--------------|-----------|-------|-------|----------|-----|-----------|\n"
+
         for p, s in player_stats.items():
             played = s["hands_played"]
             wins = s["wins"]
@@ -693,18 +695,12 @@ with st.expander("Session Game Stats"):
             else:
                 busted_display = "—"
 
-            leaderboard_rows.append({
-                "Player": p,
-                "Hands Played": played,
-                "Hands Won": wins,
-                "Folds": folds,
-                "Win %": win_pct,
-                "SD Win %": sd_pct,
-                "KOs": s["elim_wins"],
-                "Busted On": busted_display
-            })
+            md += (
+                f"| {p} | {played} | {wins} | {folds} | "
+                f"{win_pct}% | {sd_pct}% | {s['elim_wins']} | {busted_display} |\n"
+            )
 
-        st.table(leaderboard_rows)
+        st.markdown(md)
 
         # ---------------------------------------------------------
         # Ordered Altair Charts (Horizontal, Integer Ticks)
@@ -767,27 +763,22 @@ with st.expander("Session Game Stats"):
         )
 
         # ---------------------------------------------------------
-        # Pot Size Distribution by Player (Wins Only)
+        # Pot Size Distribution by Player (Wins Only) — Markdown
         # ---------------------------------------------------------
         st.subheader("Pot Size Distribution by Player (Wins Only)")
 
-        pot_rows = []
+        md = "| Player | S | M | L | Total |\n"
+        md += "|--------|---|---|---|-------|\n"
+
         for p, s in player_stats.items():
             S = s["pots_won_S"]
             M = s["pots_won_M"]
             L = s["pots_won_L"]
             total = S + M + L
 
-            pot_rows.append({
-                "Player": p,
-                "S": S,
-                "M": M,
-                "L": L,
-                "Total": total
-            })
+            md += f"| {p} | {S} | {M} | {L} | {total} |\n"
 
-        pot_df = pd.DataFrame(pot_rows)
-        st.table(pot_df.style.hide(axis="index"))  # REMOVE INDEX COLUMN
+        st.markdown(md)
 
         # ---------------------------------------------------------
         # Awards (Always show name, blank if tied/no winner)
@@ -867,6 +858,7 @@ with st.expander("Session Game Stats"):
                 st.write("🏆 **Most Dominant Player:**")
         else:
             st.write("🏆 **Most Dominant Player:**")
+
 
 
 # ---------------------------------------------------------

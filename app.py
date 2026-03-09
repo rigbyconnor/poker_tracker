@@ -503,6 +503,7 @@ with st.expander("Show Full Hand History", expanded=False):
 
 
 
+
 # ---------------------------------------------------------
 # 6. Session Game Stats (Combined with Leaderboard)
 # ---------------------------------------------------------
@@ -672,39 +673,15 @@ with st.expander("Session Game Stats"):
         c5.metric("Elimination Rate", elim_pct)
 
         # ---------------------------------------------------------
-        # Session Leaderboard (Native Streamlit Table)
+        # Session Leaderboard (Sortable)
         # ---------------------------------------------------------
         st.subheader("Session Leaderboard")
 
-        leaderboard_rows = []
-        for p, s in player_stats.items():
-            played = s["hands_played"]
-            wins = s["wins"]
-            folds = s["folds"]
+        leaderboard_df = pd.DataFrame(leaderboard_rows).sort_values(
+            by="Hands Won", ascending=False
+        )
 
-            win_pct = round((wins / played) * 100) if played > 0 else 0
-            sd_pct = (
-                round((s["showdown_wins"] / s["showdown_total"]) * 100)
-                if s["showdown_total"] > 0 else 0
-            )
-
-            if s["busted_on_hand"]:
-                busted_display = f"{s['busted_on_hand']} ({s['busted_by']})"
-            else:
-                busted_display = "—"
-
-            leaderboard_rows.append({
-                "Player": p,
-                "Hands Played": played,
-                "Hands Won": wins,
-                "Folds": folds,
-                "Win %": win_pct,
-                "SD Win %": sd_pct,
-                "KOs": s["elim_wins"],
-                "Busted On": busted_display
-            })
-
-        st.table(leaderboard_rows)
+        st.dataframe(leaderboard_df, use_container_width=True)
 
         # ---------------------------------------------------------
         # Ordered Altair Charts (Horizontal, Integer Ticks)
@@ -713,14 +690,14 @@ with st.expander("Session Game Stats"):
         pot_sizes = [h["pot_size"] for h in chronological]
         pot_counts = pd.Series(pot_sizes).value_counts()
         pot_order = ["S", "M", "L"]
-        pot_df = pd.DataFrame({
+        pot_df_chart = pd.DataFrame({
             "Pot Size": pot_order,
             "Count": [pot_counts.get(x, 0) for x in pot_order]
         })
-        pot_df["Pot Size"] = pd.Categorical(pot_df["Pot Size"], categories=pot_order, ordered=True)
+        pot_df_chart["Pot Size"] = pd.Categorical(pot_df_chart["Pot Size"], categories=pot_order, ordered=True)
 
         st.altair_chart(
-            alt.Chart(pot_df).mark_bar().encode(
+            alt.Chart(pot_df_chart).mark_bar().encode(
                 y=alt.Y("Pot Size:N", sort=pot_order),
                 x=alt.X("Count:Q", axis=alt.Axis(tickMinStep=1))
             ),
@@ -734,14 +711,14 @@ with st.expander("Session Game Stats"):
         ]
         hand_types = [h["hand_type"] for h in chronological]
         hand_counts = pd.Series(hand_types).value_counts()
-        hand_df = pd.DataFrame({
+        hand_df_chart = pd.DataFrame({
             "Hand Type": hand_order,
             "Count": [hand_counts.get(x, 0) for x in hand_order]
         })
-        hand_df["Hand Type"] = pd.Categorical(hand_df["Hand Type"], categories=hand_order, ordered=True)
+        hand_df_chart["Hand Type"] = pd.Categorical(hand_df_chart["Hand Type"], categories=hand_order, ordered=True)
 
         st.altair_chart(
-            alt.Chart(hand_df).mark_bar().encode(
+            alt.Chart(hand_df_chart).mark_bar().encode(
                 y=alt.Y("Hand Type:N", sort=hand_order),
                 x=alt.X("Count:Q", axis=alt.Axis(tickMinStep=1))
             ),
@@ -752,14 +729,14 @@ with st.expander("Session Game Stats"):
         street_order = ["Preflop", "Flop", "Turn", "River"]
         streets = [h["street"] for h in chronological]
         street_counts = pd.Series(streets).value_counts()
-        street_df = pd.DataFrame({
+        street_df_chart = pd.DataFrame({
             "Street": street_order,
             "Count": [street_counts.get(x, 0) for x in street_order]
         })
-        street_df["Street"] = pd.Categorical(street_df["Street"], categories=street_order, ordered=True)
+        street_df_chart["Street"] = pd.Categorical(street_df_chart["Street"], categories=street_order, ordered=True)
 
         st.altair_chart(
-            alt.Chart(street_df).mark_bar().encode(
+            alt.Chart(street_df_chart).mark_bar().encode(
                 y=alt.Y("Street:N", sort=street_order),
                 x=alt.X("Count:Q", axis=alt.Axis(tickMinStep=1))
             ),
@@ -767,27 +744,15 @@ with st.expander("Session Game Stats"):
         )
 
         # ---------------------------------------------------------
-        # Pot Size Distribution by Player (Wins Only)
+        # Pot Size Distribution by Player (Wins Only) — Sortable
         # ---------------------------------------------------------
         st.subheader("Pot Size Distribution by Player (Wins Only)")
 
-        pot_rows = []
-        for p, s in player_stats.items():
-            S = s["pots_won_S"]
-            M = s["pots_won_M"]
-            L = s["pots_won_L"]
-            total = S + M + L
+        pot_df = pd.DataFrame(pot_rows).sort_values(
+            by="Total", ascending=False
+        )
 
-            pot_rows.append({
-                "Player": p,
-                "S": S,
-                "M": M,
-                "L": L,
-                "Total": total
-            })
-
-        pot_df = pd.DataFrame(pot_rows)
-        st.table(pot_df)
+        st.dataframe(pot_df, use_container_width=True)
 
         # ---------------------------------------------------------
         # Awards (Always show name, blank if tied/no winner)
@@ -867,6 +832,7 @@ with st.expander("Session Game Stats"):
                 st.write("🏆 **Most Dominant Player:**")
         else:
             st.write("🏆 **Most Dominant Player:**")
+
 
 
 

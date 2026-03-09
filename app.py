@@ -605,8 +605,8 @@ with st.expander("Session Game Stats"):
     if len(hands) < 2:
         st.info("Not enough hands logged to compute game stats yet.")
     else:
-        # Convert to chronological order (oldest → newest)
-        chronological = list(reversed(hands))
+        chronological = list(reversed(hands))  # oldest → newest
+        total_hands = len(chronological)
 
         # ---------------------------------------------------------
         # Average Hand Time
@@ -616,36 +616,39 @@ with st.expander("Session Game Stats"):
         avg_hand_time = sum(deltas) / len(deltas)
         avg_hand_time_str = f"{round(avg_hand_time)} sec"
 
-        # Longest gap between hands
-        longest_gap = max(deltas)
-        longest_gap_str = f"{round(longest_gap)} sec"
-
         # ---------------------------------------------------------
-        # Pot Size Distribution
+        # Pot Size Distribution (Ordered)
         # ---------------------------------------------------------
         pot_sizes = [h["pot_size"] for h in chronological]
         pot_df = pd.DataFrame(pot_sizes, columns=["Pot Size"])
-        pot_counts = pot_df["Pot Size"].value_counts().sort_index()
+        pot_counts = pot_df["Pot Size"].value_counts()
+        pot_order = ["S", "M", "L"]
+        pot_counts = pot_counts.reindex(pot_order, fill_value=0)
 
         # ---------------------------------------------------------
-        # Winning Hand Type Distribution
+        # Winning Hand Type Distribution (Ordered)
         # ---------------------------------------------------------
         hand_types = [h["hand_type"] for h in chronological]
         handtype_df = pd.DataFrame(hand_types, columns=["Hand Type"])
         handtype_counts = handtype_df["Hand Type"].value_counts()
+        hand_order = [
+            "High Card", "Pair", "Two Pair", "Trips", "Straight",
+            "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
+        ]
+        handtype_counts = handtype_counts.reindex(hand_order, fill_value=0)
 
         # ---------------------------------------------------------
-        # Street End Distribution
+        # Street End Distribution (Ordered)
         # ---------------------------------------------------------
         streets = [h["street"] for h in chronological]
         street_df = pd.DataFrame(streets, columns=["Street"])
         street_counts = street_df["Street"].value_counts()
+        street_order = ["Preflop", "Flop", "Turn", "River"]
+        street_counts = street_counts.reindex(street_order, fill_value=0)
 
         # ---------------------------------------------------------
         # Showdown %, All‑In %, Elimination Rate
         # ---------------------------------------------------------
-        total_hands = len(chronological)
-
         showdown_hands = sum(
             1 for h in chronological
             if h["street"] == "River" and h["hand_type"] != "No Showdown"
@@ -664,54 +667,95 @@ with st.expander("Session Game Stats"):
         unique_winners = len(set(h["winner"] for h in chronological))
 
         # ---------------------------------------------------------
-        # Streaks (Heater / Ice Cold)
+        # Player-Level Advanced Metrics
         # ---------------------------------------------------------
-        longest_win_streak = 0
-        longest_loss_streak = 0
-        heater_player = None
-        cold_player = None
+        player_stats = {
+            p: {
+                "hands_played": 0,
+                "wins": 0,
+                "folds": 0,
+                "showdown_wins": 0,
+                "showdown_total": 0,
+                "large_pots_won": 0,
+                "allin_wins": 0,
+                "elim_wins": 0,
+                "eliminations": 0,
+                "win_streak": 0,
+                "loss_streak": 0,
+                "max_win_streak": 0,
+                "max_loss_streak": 0,
+            }
+            for p in players_in_game
+        }
 
-        streaks = {p: {"win": 0, "loss": 0} for p in players_in_game}
-
-        for h in chronological:
-            winner = h["winner"]
-            losers = [
-                p for p in h["players_in_game"]
-                if p != winner and p not in (h.get("showdown_losers") or []) and p not in (h.get("eliminated_player") or [])
-            ]
-
-            # Update winner streak
-            streaks[winner]["win"] += 1
-            streaks[winner]["loss"] = 0
-            if streaks[winner]["win"] > longest_win_streak:
-                longest_win_streak = streaks[winner]["win"]
-                heater_player = winner
-
-            # Update loser streaks
-            for p in losers:
-                streaks[p]["loss"] += 1
-                streaks[p]["win"] = 0
-                if streaks[p]["loss"] > longest_loss_streak:
-                    longest_loss_streak = streaks[p]["loss"]
-                    cold_player = p
-
-        # ---------------------------------------------------------
-        # Fastest Bustout / Last Survivor
-        # ---------------------------------------------------------
-        elim_order = []
         for idx, h in enumerate(chronological, start=1):
+            winner = h["winner"]
+            street = h["street"]
+            hand_type = h["hand_type"]
+            pot_size = h["pot_size"]
+            all_in = h["all_in"]
+
+            showdown_losers = h.get("showdown_losers") or []
             eliminated = h.get("eliminated_player") or []
+
+            if isinstance(showdown_losers, str):
+                showdown_losers = [showdown_losers]
             if isinstance(eliminated, str):
                 eliminated = [eliminated]
-            for p in eliminated:
-                elim_order.append((p, idx))
 
-        if elim_order:
-            fastest_bust = elim_order[0]
-            last_survivor = elim_order[-1]
-        else:
-            fastest_bust = ("—", "—")
-            last_survivor = ("—", "—")
+            # Hands played
+            for p in h["players_in_game"]:
+                player_stats[p]["hands_played"] += 1
+
+            # Wins
+            player_stats[winner]["wins"] += 1
+
+            # Showdown stats
+            is_showdown = (street == "River" and hand_type != "No Showdown")
+            if is_showdown:
+                player_stats[winner]["showdown_wins"] += 1
+                player_stats[winner]["showdown_total"] += 1
+                for p in showdown_losers:
+                    player_stats[p]["showdown_total"] += 1
+
+            # Folds
+            for p in h["players_in_game"]:
+                if (
+                    p != winner
+                    and p not in showdown_losers
+                    and p not in eliminated
+                ):
+                    player_stats[p]["folds"] += 1
+
+            # Large pots
+            if pot_size in ["M", "L"]:
+                player_stats[winner]["large_pots_won"] += 1
+
+            # All-in wins
+            if all_in:
+                player_stats[winner]["allin_wins"] += 1
+
+            # Eliminations
+            for p in eliminated:
+                player_stats[winner]["elim_wins"] += 1
+                player_stats[p]["loss_streak"] += 1
+                player_stats[p]["win_streak"] = 0
+                if player_stats[p]["loss_streak"] > player_stats[p]["max_loss_streak"]:
+                    player_stats[p]["max_loss_streak"] = player_stats[p]["loss_streak"]
+
+            # Win/Loss streaks
+            for p in players_in_game:
+                if p == winner:
+                    player_stats[p]["win_streak"] += 1
+                    player_stats[p]["loss_streak"] = 0
+                    if player_stats[p]["win_streak"] > player_stats[p]["max_win_streak"]:
+                        player_stats[p]["max_win_streak"] = player_stats[p]["win_streak"]
+                else:
+                    if p in h["players_in_game"]:
+                        player_stats[p]["loss_streak"] += 1
+                        player_stats[p]["win_streak"] = 0
+                        if player_stats[p]["loss_streak"] > player_stats[p]["max_loss_streak"]:
+                            player_stats[p]["max_loss_streak"] = player_stats[p]["loss_streak"]
 
         # ---------------------------------------------------------
         # Display Metrics
@@ -723,10 +767,9 @@ with st.expander("Session Game Stats"):
         c2.metric("Showdown %", showdown_pct)
         c3.metric("All-In %", allin_pct)
 
-        c4, c5, c6 = st.columns(3)
+        c4, c5 = st.columns(2)
         c4.metric("Elimination Rate", elim_pct)
         c5.metric("Winner Diversity", unique_winners)
-        c6.metric("Longest Gap", longest_gap_str)
 
         # ---------------------------------------------------------
         # Charts
@@ -741,19 +784,82 @@ with st.expander("Session Game Stats"):
         st.bar_chart(street_counts)
 
         # ---------------------------------------------------------
-        # Fun Awards
+        # Clutch Score Components + Total
+        # ---------------------------------------------------------
+        st.subheader("Clutch Performance")
+
+        clutch_rows = []
+        for p, s in player_stats.items():
+            played = s["hands_played"]
+            if played == 0:
+                continue
+
+            large_pct = round((s["large_pots_won"] / played) * 100) if played else 0
+            allin_pct = round((s["allin_wins"] / played) * 100) if played else 0
+            elim_pct = round((s["elim_wins"] / played) * 100) if played else 0
+
+            clutch_total = large_pct + allin_pct + elim_pct
+
+            clutch_rows.append({
+                "Player": p,
+                "Large Pot %": large_pct,
+                "All-In %": allin_pct,
+                "Elimination %": elim_pct,
+                "Clutch Score": clutch_total
+            })
+
+        st.table(clutch_rows)
+
+        # ---------------------------------------------------------
+        # Awards
         # ---------------------------------------------------------
         st.subheader("Awards")
 
+        # Heater / Ice Cold
+        heater = max(player_stats.items(), key=lambda x: x[1]["max_win_streak"])
+        cold = max(player_stats.items(), key=lambda x: x[1]["max_loss_streak"])
+
+        # Fastest Bustout
+        elim_order = []
+        for idx, h in enumerate(chronological, start=1):
+            eliminated = h.get("eliminated_player") or []
+            if isinstance(eliminated, str):
+                eliminated = [eliminated]
+            for p in eliminated:
+                elim_order.append((p, idx))
+
+        fastest_bust = elim_order[0] if elim_order else ("—", "—")
+
+        # Most Active / Passive / Dominant
+        most_active = max(player_stats.items(), key=lambda x: x[1]["hands_played"])
+        most_passive = max(player_stats.items(), key=lambda x: x[1]["folds"])
+
+        dominant_candidates = [
+            (p, s) for p, s in player_stats.items() if s["hands_played"] >= 5
+        ]
+        if dominant_candidates:
+            most_dominant = max(
+                dominant_candidates,
+                key=lambda x: x[1]["wins"] / x[1]["hands_played"]
+            )
+            dominant_player = most_dominant[0]
+            dominant_win_pct = round(
+                (most_dominant[1]["wins"] / most_dominant[1]["hands_played"]) * 100
+            )
+        else:
+            dominant_player = "—"
+            dominant_win_pct = "—"
+
         awards = [
-            {"Award": "Heater (Longest Win Streak)", "Player": heater_player or "—", "Value": longest_win_streak},
-            {"Award": "Ice Cold (Longest Loss Streak)", "Player": cold_player or "—", "Value": longest_loss_streak},
+            {"Award": "Heater (Longest Win Streak)", "Player": heater[0], "Value": int(heater[1]["max_win_streak"])},
+            {"Award": "Ice Cold (Longest Loss Streak)", "Player": cold[0], "Value": int(cold[1]["max_loss_streak"])},
             {"Award": "Fastest Bustout", "Player": fastest_bust[0], "Hand": fastest_bust[1]},
-            {"Award": "Last Survivor", "Player": last_survivor[0], "Hand": last_survivor[1]},
+            {"Award": "Most Active Player", "Player": most_active[0], "Hands Played": int(most_active[1]["hands_played"])},
+            {"Award": "Most Passive Player", "Player": most_passive[0], "Folds": int(most_passive[1]["folds"])},
+            {"Award": "Most Dominant Player", "Player": dominant_player, "Win %": dominant_win_pct},
         ]
 
         st.table(awards)
-
 
 
 

@@ -672,13 +672,11 @@ with st.expander("Session Game Stats"):
         c5.metric("Elimination Rate", elim_pct)
 
         # ---------------------------------------------------------
-        # Session Leaderboard (Markdown version)
+        # Session Leaderboard (Native Streamlit Table)
         # ---------------------------------------------------------
         st.subheader("Session Leaderboard")
 
-        md = "| Player | Hands Played | Hands Won | Folds | Win % | SD Win % | KOs | Busted On |\n"
-        md += "|--------|--------------|-----------|-------|-------|----------|-----|-----------|\n"
-
+        leaderboard_rows = []
         for p, s in player_stats.items():
             played = s["hands_played"]
             wins = s["wins"]
@@ -695,12 +693,18 @@ with st.expander("Session Game Stats"):
             else:
                 busted_display = "—"
 
-            md += (
-                f"| {p} | {played} | {wins} | {folds} | "
-                f"{win_pct}% | {sd_pct}% | {s['elim_wins']} | {busted_display} |\n"
-            )
+            leaderboard_rows.append({
+                "Player": p,
+                "Hands Played": played,
+                "Hands Won": wins,
+                "Folds": folds,
+                "Win %": win_pct,
+                "SD Win %": sd_pct,
+                "KOs": s["elim_wins"],
+                "Busted On": busted_display
+            })
 
-        st.markdown(md)
+        st.table(leaderboard_rows)
 
         # ---------------------------------------------------------
         # Ordered Altair Charts (Horizontal, Integer Ticks)
@@ -763,22 +767,27 @@ with st.expander("Session Game Stats"):
         )
 
         # ---------------------------------------------------------
-        # Pot Size Distribution by Player (Wins Only) — Markdown
+        # Pot Size Distribution by Player (Wins Only)
         # ---------------------------------------------------------
         st.subheader("Pot Size Distribution by Player (Wins Only)")
 
-        md = "| Player | S | M | L | Total |\n"
-        md += "|--------|---|---|---|-------|\n"
-
+        pot_rows = []
         for p, s in player_stats.items():
             S = s["pots_won_S"]
             M = s["pots_won_M"]
             L = s["pots_won_L"]
             total = S + M + L
 
-            md += f"| {p} | {S} | {M} | {L} | {total} |\n"
+            pot_rows.append({
+                "Player": p,
+                "S": S,
+                "M": M,
+                "L": L,
+                "Total": total
+            })
 
-        st.markdown(md)
+        pot_df = pd.DataFrame(pot_rows)
+        st.table(pot_df)
 
         # ---------------------------------------------------------
         # Awards (Always show name, blank if tied/no winner)

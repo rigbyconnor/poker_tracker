@@ -501,6 +501,7 @@ with st.expander("Show Full Hand History", expanded=False):
         render_hand(h, hand_number)
 
 
+
 # ---------------------------------------------------------
 # 6. Session Game Stats (Combined with Leaderboard)
 # ---------------------------------------------------------
@@ -532,6 +533,7 @@ with st.expander("Session Game Stats"):
                 "elim_wins": 0,
                 "busted_on_hand": None,
                 "busted_by": None,
+                "aggressive_wins": 0,   # NEW
                 "current_win_streak": 0,
                 "current_loss_streak": 0,
                 "max_win_streak": 0,
@@ -575,6 +577,10 @@ with st.expander("Session Game Stats"):
             # Wins
             if player_stats[winner]["alive"]:
                 player_stats[winner]["wins"] += 1
+
+            # Aggressive Wins (pots won before river)
+            if street != "River" and player_stats[winner]["alive"]:
+                player_stats[winner]["aggressive_wins"] += 1
 
             # Pot Size Wins (S/M/L)
             if pot_size == "S":
@@ -779,7 +785,8 @@ with st.expander("Session Game Stats"):
                 "Total": total
             })
 
-        pot_df = pd.DataFrame(pot_rows).reset_index(drop=True)
+        pot_df = pd.DataFrame(pot_rows)
+        pot_df.index = [""] * len(pot_df)   # REMOVE INDEX COLUMN
         st.table(pot_df)
 
         # ---------------------------------------------------------
@@ -801,6 +808,7 @@ with st.expander("Session Game Stats"):
 
         most_active = max(player_stats.items(), key=lambda x: x[1]["showdown_participation"])
         most_passive = max(player_stats.items(), key=lambda x: x[1]["folds"])
+        most_aggressive = max(player_stats.items(), key=lambda x: x[1]["aggressive_wins"])
 
         dominant_candidates = [
             (p, s) for p, s in player_stats.items() if s["hands_played"] >= 5
@@ -823,7 +831,9 @@ with st.expander("Session Game Stats"):
         st.write(f"💀 **Fastest Bustout:** {fastest_bust[0]} was eliminated on Hand #{fastest_bust[1]}.")
         st.write(f"📈 **Most Active Player:** {most_active[0]} participated in {int(most_active[1]['showdown_participation'])} showdowns.")
         st.write(f"🪫 **Most Passive Player:** {most_passive[0]} folded {int(most_passive[1]['folds'])} times.")
+        st.write(f"⚔️ **Aggression Award:** {most_aggressive[0]} won {int(most_aggressive[1]['aggressive_wins'])} pots before the river.")
         st.write(f"🏆 **Most Dominant Player:** {dominant_player} leads with a {dominant_win_pct}% win rate (min 5 hands).")
+
 
 
 # ---------------------------------------------------------

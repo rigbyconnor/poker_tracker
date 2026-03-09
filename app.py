@@ -232,6 +232,7 @@ alive_players = [p for p in players_in_game if p not in eliminated_so_far]
 
 
 
+
 # ---------------------------------------------------------
 # 3. Log a Hand
 # ---------------------------------------------------------
@@ -311,7 +312,16 @@ if street == "River":
             columns=2
         )
 
+# ---------------------------------------------------------
+# Submit Hand (with validation)
+# ---------------------------------------------------------
 if st.button("Submit Hand", type="primary"):
+
+    # ⭐ REQUIRE at least one showdown loser on River with real hand type
+    if street == "River" and hand_type != "No Showdown" and len(showdown_losers) == 0:
+        st.error("At least one showdown loser is required for a River showdown hand.")
+        st.stop()
+
     data = {
         "hand_number": int(datetime.utcnow().timestamp()),
         "winner": winner,
@@ -325,9 +335,11 @@ if st.button("Submit Hand", type="primary"):
         "game_name": active_session["name"],
         "created_at": datetime.utcnow().isoformat(),
     }
+
     supabase.table("hands").insert(data).execute()
     st.success("Hand logged!")
     st.rerun()
+
 
 
 

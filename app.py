@@ -7,6 +7,7 @@ import streamlit as st
 from supabase import create_client
 from datetime import datetime
 import json
+import pandas as pd
 
 # ---------------------------------------------------------
 # Supabase connection

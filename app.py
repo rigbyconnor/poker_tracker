@@ -594,8 +594,170 @@ with st.expander("Session Leaderboard"):
     st.dataframe(leaderboard_rows, hide_index=True)
 
 
+
+
 # ---------------------------------------------------------
-# 6. Admin Tools (Bottom of Page)
+# 6. Session Game Stats
+# ---------------------------------------------------------
+with st.expander("Session Game Stats"):
+
+    if len(hands) < 2:
+        st.info("Not enough hands logged to compute game stats yet.")
+    else:
+        # Convert to chronological order (oldest → newest)
+        chronological = list(reversed(hands))
+
+        # ---------------------------------------------------------
+        # Average Hand Time
+        # ---------------------------------------------------------
+        times = [datetime.fromisoformat(h["created_at"]) for h in chronological]
+        deltas = [(times[i+1] - times[i]).total_seconds() for i in range(len(times)-1)]
+        avg_hand_time = sum(deltas) / len(deltas)
+        avg_hand_time_str = f"{round(avg_hand_time)} sec"
+
+        # Longest gap between hands
+        longest_gap = max(deltas)
+        longest_gap_str = f"{round(longest_gap)} sec"
+
+        # ---------------------------------------------------------
+        # Pot Size Distribution
+        # ---------------------------------------------------------
+        pot_sizes = [h["pot_size"] for h in chronological]
+        pot_df = pd.DataFrame(pot_sizes, columns=["Pot Size"])
+        pot_counts = pot_df["Pot Size"].value_counts().sort_index()
+
+        # ---------------------------------------------------------
+        # Winning Hand Type Distribution
+        # ---------------------------------------------------------
+        hand_types = [h["hand_type"] for h in chronological]
+        handtype_df = pd.DataFrame(hand_types, columns=["Hand Type"])
+        handtype_counts = handtype_df["Hand Type"].value_counts()
+
+        # ---------------------------------------------------------
+        # Street End Distribution
+        # ---------------------------------------------------------
+        streets = [h["street"] for h in chronological]
+        street_df = pd.DataFrame(streets, columns=["Street"])
+        street_counts = street_df["Street"].value_counts()
+
+        # ---------------------------------------------------------
+        # Showdown %, All‑In %, Elimination Rate
+        # ---------------------------------------------------------
+        total_hands = len(chronological)
+
+        showdown_hands = sum(
+            1 for h in chronological
+            if h["street"] == "River" and h["hand_type"] != "No Showdown"
+        )
+        showdown_pct = f"{round((showdown_hands / total_hands) * 100)}%"
+
+        allin_hands = sum(1 for h in chronological if h["all_in"])
+        allin_pct = f"{round((allin_hands / total_hands) * 100)}%"
+
+        elim_hands = sum(1 for h in chronological if h.get("eliminated_player"))
+        elim_pct = f"{round((elim_hands / total_hands) * 100)}%"
+
+        # ---------------------------------------------------------
+        # Winner Diversity
+        # ---------------------------------------------------------
+        unique_winners = len(set(h["winner"] for h in chronological))
+
+        # ---------------------------------------------------------
+        # Streaks (Heater / Ice Cold)
+        # ---------------------------------------------------------
+        longest_win_streak = 0
+        longest_loss_streak = 0
+        heater_player = None
+        cold_player = None
+
+        streaks = {p: {"win": 0, "loss": 0} for p in players_in_game}
+
+        for h in chronological:
+            winner = h["winner"]
+            losers = [
+                p for p in h["players_in_game"]
+                if p != winner and p not in (h.get("showdown_losers") or []) and p not in (h.get("eliminated_player") or [])
+            ]
+
+            # Update winner streak
+            streaks[winner]["win"] += 1
+            streaks[winner]["loss"] = 0
+            if streaks[winner]["win"] > longest_win_streak:
+                longest_win_streak = streaks[winner]["win"]
+                heater_player = winner
+
+            # Update loser streaks
+            for p in losers:
+                streaks[p]["loss"] += 1
+                streaks[p]["win"] = 0
+                if streaks[p]["loss"] > longest_loss_streak:
+                    longest_loss_streak = streaks[p]["loss"]
+                    cold_player = p
+
+        # ---------------------------------------------------------
+        # Fastest Bustout / Last Survivor
+        # ---------------------------------------------------------
+        elim_order = []
+        for idx, h in enumerate(chronological, start=1):
+            eliminated = h.get("eliminated_player") or []
+            if isinstance(eliminated, str):
+                eliminated = [eliminated]
+            for p in eliminated:
+                elim_order.append((p, idx))
+
+        if elim_order:
+            fastest_bust = elim_order[0]
+            last_survivor = elim_order[-1]
+        else:
+            fastest_bust = ("—", "—")
+            last_survivor = ("—", "—")
+
+        # ---------------------------------------------------------
+        # Display Metrics
+        # ---------------------------------------------------------
+        st.subheader("Game Summary Metrics")
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Avg Hand Time", avg_hand_time_str)
+        c2.metric("Showdown %", showdown_pct)
+        c3.metric("All-In %", allin_pct)
+
+        c4, c5, c6 = st.columns(3)
+        c4.metric("Elimination Rate", elim_pct)
+        c5.metric("Winner Diversity", unique_winners)
+        c6.metric("Longest Gap", longest_gap_str)
+
+        # ---------------------------------------------------------
+        # Charts
+        # ---------------------------------------------------------
+        st.subheader("Pot Size Distribution")
+        st.bar_chart(pot_counts)
+
+        st.subheader("Winning Hand Type Distribution")
+        st.bar_chart(handtype_counts)
+
+        st.subheader("Street End Distribution")
+        st.bar_chart(street_counts)
+
+        # ---------------------------------------------------------
+        # Fun Awards
+        # ---------------------------------------------------------
+        st.subheader("Awards")
+
+        awards = [
+            {"Award": "Heater (Longest Win Streak)", "Player": heater_player or "—", "Value": longest_win_streak},
+            {"Award": "Ice Cold (Longest Loss Streak)", "Player": cold_player or "—", "Value": longest_loss_streak},
+            {"Award": "Fastest Bustout", "Player": fastest_bust[0], "Hand": fastest_bust[1]},
+            {"Award": "Last Survivor", "Player": last_survivor[0], "Hand": last_survivor[1]},
+        ]
+
+        st.table(awards)
+
+
+
+
+# ---------------------------------------------------------
+# 7. Admin Tools (Bottom of Page)
 # ---------------------------------------------------------
 with st.expander("Admin Tools (Danger Zone)"):
 

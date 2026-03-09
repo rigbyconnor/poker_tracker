@@ -625,17 +625,28 @@ with st.expander("Session Game Stats"):
         pot_order = ["S", "M", "L"]
         pot_counts = pot_counts.reindex(pot_order, fill_value=0)
 
+        pot_df_display = pd.DataFrame({
+            "Pot Size": pot_order,
+            "Count": [pot_counts[x] for x in pot_order]
+        })
+
         # ---------------------------------------------------------
         # Winning Hand Type Distribution (Ordered)
         # ---------------------------------------------------------
         hand_types = [h["hand_type"] for h in chronological]
         handtype_df = pd.DataFrame(hand_types, columns=["Hand Type"])
         handtype_counts = handtype_df["Hand Type"].value_counts()
+
         hand_order = [
             "High Card", "Pair", "Two Pair", "Trips", "Straight",
             "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
         ]
         handtype_counts = handtype_counts.reindex(hand_order, fill_value=0)
+
+        handtype_df_display = pd.DataFrame({
+            "Hand Type": hand_order,
+            "Count": [handtype_counts[x] for x in hand_order]
+        })
 
         # ---------------------------------------------------------
         # Street End Distribution (Ordered)
@@ -643,8 +654,14 @@ with st.expander("Session Game Stats"):
         streets = [h["street"] for h in chronological]
         street_df = pd.DataFrame(streets, columns=["Street"])
         street_counts = street_df["Street"].value_counts()
+
         street_order = ["Preflop", "Flop", "Turn", "River"]
         street_counts = street_counts.reindex(street_order, fill_value=0)
+
+        street_df_display = pd.DataFrame({
+            "Street": street_order,
+            "Count": [street_counts[x] for x in street_order]
+        })
 
         # ---------------------------------------------------------
         # Showdown %, All‑In %, Elimination Rate
@@ -662,11 +679,6 @@ with st.expander("Session Game Stats"):
         elim_pct = f"{round((elim_hands / total_hands) * 100)}%"
 
         # ---------------------------------------------------------
-        # Winner Diversity
-        # ---------------------------------------------------------
-        unique_winners = len(set(h["winner"] for h in chronological))
-
-        # ---------------------------------------------------------
         # Player-Level Advanced Metrics
         # ---------------------------------------------------------
         player_stats = {
@@ -679,7 +691,6 @@ with st.expander("Session Game Stats"):
                 "large_pots_won": 0,
                 "allin_wins": 0,
                 "elim_wins": 0,
-                "eliminations": 0,
                 "win_streak": 0,
                 "loss_streak": 0,
                 "max_win_streak": 0,
@@ -738,10 +749,6 @@ with st.expander("Session Game Stats"):
             # Eliminations
             for p in eliminated:
                 player_stats[winner]["elim_wins"] += 1
-                player_stats[p]["loss_streak"] += 1
-                player_stats[p]["win_streak"] = 0
-                if player_stats[p]["loss_streak"] > player_stats[p]["max_loss_streak"]:
-                    player_stats[p]["max_loss_streak"] = player_stats[p]["loss_streak"]
 
             # Win/Loss streaks
             for p in players_in_game:
@@ -769,19 +776,19 @@ with st.expander("Session Game Stats"):
 
         c4, c5 = st.columns(2)
         c4.metric("Elimination Rate", elim_pct)
-        c5.metric("Winner Diversity", unique_winners)
+        c5.metric("Total Hands", total_hands)
 
         # ---------------------------------------------------------
         # Charts
         # ---------------------------------------------------------
         st.subheader("Pot Size Distribution")
-        st.bar_chart(pot_counts)
+        st.bar_chart(pot_df_display.set_index("Pot Size"))
 
         st.subheader("Winning Hand Type Distribution")
-        st.bar_chart(handtype_counts)
+        st.bar_chart(handtype_df_display.set_index("Hand Type"))
 
         st.subheader("Street End Distribution")
-        st.bar_chart(street_counts)
+        st.bar_chart(street_df_display.set_index("Street"))
 
         # ---------------------------------------------------------
         # Clutch Score Components + Total
@@ -811,7 +818,7 @@ with st.expander("Session Game Stats"):
         st.table(clutch_rows)
 
         # ---------------------------------------------------------
-        # Awards
+        # Awards (Sentence Style with Emojis)
         # ---------------------------------------------------------
         st.subheader("Awards")
 
@@ -850,16 +857,13 @@ with st.expander("Session Game Stats"):
             dominant_player = "—"
             dominant_win_pct = "—"
 
-        awards = [
-            {"Award": "Heater (Longest Win Streak)", "Player": heater[0], "Value": int(heater[1]["max_win_streak"])},
-            {"Award": "Ice Cold (Longest Loss Streak)", "Player": cold[0], "Value": int(cold[1]["max_loss_streak"])},
-            {"Award": "Fastest Bustout", "Player": fastest_bust[0], "Hand": fastest_bust[1]},
-            {"Award": "Most Active Player", "Player": most_active[0], "Hands Played": int(most_active[1]["hands_played"])},
-            {"Award": "Most Passive Player", "Player": most_passive[0], "Folds": int(most_passive[1]["folds"])},
-            {"Award": "Most Dominant Player", "Player": dominant_player, "Win %": dominant_win_pct},
-        ]
-
-        st.table(awards)
+        # Sentence-style awards with emojis
+        st.write(f"🔥 **Heater Award:** {heater[0]} is on a {int(heater[1]['max_win_streak'])}-hand win streak.")
+        st.write(f"❄️ **Ice Cold Award:** {cold[0]} has the longest losing streak at {int(cold[1]['max_loss_streak'])} hands.")
+        st.write(f"💀 **Fastest Bustout:** {fastest_bust[0]} was eliminated on Hand #{fastest_bust[1]}.")
+        st.write(f"📈 **Most Active Player:** {most_active[0]} played {int(most_active[1]['hands_played'])} hands.")
+        st.write(f"🪫 **Most Passive Player:** {most_passive[0]} folded {int(most_passive[1]['folds'])} times.")
+        st.write(f"🏆 **Most Dominant Player:** {dominant_player} leads with a {dominant_win_pct}% win rate (min 5 hands).")
 
 
 

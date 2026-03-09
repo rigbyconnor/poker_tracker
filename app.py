@@ -621,10 +621,9 @@ with st.expander("Session Game Stats"):
                 "showdown_wins": 0,
                 "showdown_total": 0,
                 "showdown_participation": 0,
-                "large_med_played": 0,
-                "large_med_won": 0,
-                "allin_played": 0,
-                "allin_won": 0,
+                "pots_won_S": 0,
+                "pots_won_M": 0,
+                "pots_won_L": 0,
                 "current_win_streak": 0,
                 "current_loss_streak": 0,
                 "max_win_streak": 0,
@@ -669,6 +668,14 @@ with st.expander("Session Game Stats"):
             if player_stats[winner]["alive"]:
                 player_stats[winner]["wins"] += 1
 
+            # Pot Size Wins (S/M/L)
+            if pot_size == "S":
+                player_stats[winner]["pots_won_S"] += 1
+            elif pot_size == "M":
+                player_stats[winner]["pots_won_M"] += 1
+            elif pot_size == "L":
+                player_stats[winner]["pots_won_L"] += 1
+
             # Showdown participation
             is_showdown = (street == "River" and hand_type != "No Showdown")
             if is_showdown:
@@ -694,20 +701,6 @@ with st.expander("Session Game Stats"):
                     and p not in eliminated
                 ):
                     player_stats[p]["folds"] += 1
-
-            # Large/Medium pot participation
-            if pot_size in ["M", "L"]:
-                for p in alive_players:
-                    player_stats[p]["large_med_played"] += 1
-                if player_stats[winner]["alive"]:
-                    player_stats[winner]["large_med_won"] += 1
-
-            # All-in participation
-            if all_in:
-                for p in alive_players:
-                    player_stats[p]["allin_played"] += 1
-                if player_stats[winner]["alive"]:
-                    player_stats[winner]["allin_won"] += 1
 
             # Eliminations
             for p in eliminated:
@@ -821,38 +814,26 @@ with st.expander("Session Game Stats"):
         )
 
         # ---------------------------------------------------------
-        # Clutch Score Table
+        # Pot Size Distribution by Player (Wins Only)
         # ---------------------------------------------------------
-        st.subheader("Clutch Performance")
+        st.subheader("Pot Size Distribution by Player (Wins Only)")
 
-        clutch_rows = []
+        pot_rows = []
         for p, s in player_stats.items():
-            played = s["hands_played"]
-            if played == 0:
-                continue
+            S = s["pots_won_S"]
+            M = s["pots_won_M"]
+            L = s["pots_won_L"]
+            total = S + M + L
 
-            # Large/Medium Pot %
-            if s["large_med_played"] > 0:
-                large_med_pct = round((s["large_med_won"] / s["large_med_played"]) * 100)
-            else:
-                large_med_pct = 0
-
-            # All-In %
-            if s["allin_played"] > 0:
-                allin_pct = round((s["allin_won"] / s["allin_played"]) * 100)
-            else:
-                allin_pct = 0
-
-            clutch_total = large_med_pct + allin_pct
-
-            clutch_rows.append({
+            pot_rows.append({
                 "Player": p,
-                "Med/Large Pot %": large_med_pct,
-                "All-In %": allin_pct,
-                "Clutch Score": clutch_total
+                "S": S,
+                "M": M,
+                "L": L,
+                "Total": total
             })
 
-        st.table(clutch_rows)
+        st.table(pot_rows)
 
         # ---------------------------------------------------------
         # Awards (Sentence Style with Emojis)
@@ -896,6 +877,7 @@ with st.expander("Session Game Stats"):
         st.write(f"📈 **Most Active Player:** {most_active[0]} participated in {int(most_active[1]['showdown_participation'])} showdowns.")
         st.write(f"🪫 **Most Passive Player:** {most_passive[0]} folded {int(most_passive[1]['folds'])} times.")
         st.write(f"🏆 **Most Dominant Player:** {dominant_player} leads with a {dominant_win_pct}% win rate (min 5 hands).")
+
 
 
 # ---------------------------------------------------------

@@ -502,6 +502,7 @@ with st.expander("Show Full Hand History", expanded=False):
 
 
 
+
 # ---------------------------------------------------------
 # 6. Session Game Stats (Combined with Leaderboard)
 # ---------------------------------------------------------
@@ -786,17 +787,38 @@ with st.expander("Session Game Stats"):
             })
 
         pot_df = pd.DataFrame(pot_rows)
-        pot_df.index = [""] * len(pot_df)   # REMOVE INDEX COLUMN
-        st.table(pot_df)
+        st.table(pot_df.style.hide(axis="index"))  # REMOVE INDEX COLUMN
 
         # ---------------------------------------------------------
-        # Awards (Sentence Style with Emojis)
+        # Awards (Always show name, blank if tied/no winner)
         # ---------------------------------------------------------
         st.subheader("Awards")
 
-        heater = max(player_stats.items(), key=lambda x: x[1]["max_win_streak"])
-        cold = max(player_stats.items(), key=lambda x: x[1]["max_loss_streak"])
+        # Helper: returns winner name or None
+        def get_clear_winner(key):
+            values = [s[key] for s in player_stats.values()]
+            max_val = max(values)
+            if values.count(max_val) == 1 and max_val > 0:
+                for p, s in player_stats.items():
+                    if s[key] == max_val:
+                        return p, max_val
+            return None, None
 
+        # Heater Award
+        heater_p, heater_v = get_clear_winner("max_win_streak")
+        if heater_p:
+            st.write(f"🔥 **Heater Award:** {heater_p} peaked with a {heater_v}-hand win streak.")
+        else:
+            st.write("🔥 **Heater Award:**")
+
+        # Ice Cold Award
+        cold_p, cold_v = get_clear_winner("max_loss_streak")
+        if cold_p:
+            st.write(f"❄️ **Ice Cold Award:** {cold_p} suffered a {cold_v}-hand losing streak.")
+        else:
+            st.write("❄️ **Ice Cold Award:**")
+
+        # Fastest Bustout (always unique)
         elim_order = []
         for idx, h in enumerate(chronological, start=1):
             eliminated = h.get("eliminated_player") or []
@@ -804,36 +826,47 @@ with st.expander("Session Game Stats"):
                 eliminated = [eliminated]
             for p in eliminated:
                 elim_order.append((p, idx))
-        fastest_bust = elim_order[0] if elim_order else ("—", "—")
 
-        most_active = max(player_stats.items(), key=lambda x: x[1]["showdown_participation"])
-        most_passive = max(player_stats.items(), key=lambda x: x[1]["folds"])
-        most_aggressive = max(player_stats.items(), key=lambda x: x[1]["aggressive_wins"])
-
-        dominant_candidates = [
-            (p, s) for p, s in player_stats.items() if s["hands_played"] >= 5
-        ]
-        if dominant_candidates:
-            most_dominant = max(
-                dominant_candidates,
-                key=lambda x: x[1]["wins"] / x[1]["hands_played"]
-            )
-            dominant_player = most_dominant[0]
-            dominant_win_pct = round(
-                (most_dominant[1]["wins"] / most_dominant[1]["hands_played"]) * 100
-            )
+        if elim_order:
+            fb_p, fb_h = elim_order[0]
+            st.write(f"💀 **Fastest Bustout:** {fb_p} was eliminated on Hand #{fb_h}.")
         else:
-            dominant_player = "—"
-            dominant_win_pct = "—"
+            st.write("💀 **Fastest Bustout:**")
 
-        st.write(f"🔥 **Heater Award:** {heater[0]} peaked with a {int(heater[1]['max_win_streak'])}-hand win streak.")
-        st.write(f"❄️ **Ice Cold Award:** {cold[0]} suffered a {int(cold[1]['max_loss_streak'])}-hand losing streak.")
-        st.write(f"💀 **Fastest Bustout:** {fastest_bust[0]} was eliminated on Hand #{fastest_bust[1]}.")
-        st.write(f"📈 **Most Active Player:** {most_active[0]} participated in {int(most_active[1]['showdown_participation'])} showdowns.")
-        st.write(f"🪫 **Most Passive Player:** {most_passive[0]} folded {int(most_passive[1]['folds'])} times.")
-        st.write(f"⚔️ **Aggression Award:** {most_aggressive[0]} won {int(most_aggressive[1]['aggressive_wins'])} pots before the river.")
-        st.write(f"🏆 **Most Dominant Player:** {dominant_player} leads with a {dominant_win_pct}% win rate (min 5 hands).")
+        # Most Active
+        active_p, active_v = get_clear_winner("showdown_participation")
+        if active_p:
+            st.write(f"📈 **Most Active Player:** {active_p} participated in {active_v} showdowns.")
+        else:
+            st.write("📈 **Most Active Player:**")
 
+        # Most Passive
+        passive_p, passive_v = get_clear_winner("folds")
+        if passive_p:
+            st.write(f"🪫 **Most Passive Player:** {passive_p} folded {passive_v} times.")
+        else:
+            st.write("🪫 **Most Passive Player:**")
+
+        # Aggression Award
+        agg_p, agg_v = get_clear_winner("aggressive_wins")
+        if agg_p:
+            st.write(f"⚔️ **Aggression Award:** {agg_p} won {agg_v} pots before the river.")
+        else:
+            st.write("⚔️ **Aggression Award:**")
+
+        # Most Dominant Player (min 5 hands)
+        dom_candidates = [(p, s) for p, s in player_stats.items() if s["hands_played"] >= 5]
+        if dom_candidates:
+            win_rates = [(p, s["wins"] / s["hands_played"]) for p, s in dom_candidates]
+            max_rate = max(v for _, v in win_rates)
+            if sum(1 for _, v in win_rates if v == max_rate) == 1:
+                dom_p = next(p for p, v in win_rates if v == max_rate)
+                dom_pct = round(max_rate * 100)
+                st.write(f"🏆 **Most Dominant Player:** {dom_p} leads with a {dom_pct}% win rate.")
+            else:
+                st.write("🏆 **Most Dominant Player:**")
+        else:
+            st.write("🏆 **Most Dominant Player:**")
 
 
 # ---------------------------------------------------------

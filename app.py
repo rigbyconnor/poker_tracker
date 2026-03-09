@@ -231,6 +231,7 @@ for h in chronological:
 alive_players = [p for p in players_in_game if p not in eliminated_so_far]
 
 
+
 # ---------------------------------------------------------
 # 3. Log a Hand
 # ---------------------------------------------------------
@@ -260,12 +261,10 @@ col3, col4 = st.columns(2)
 with col3:
     st.subheader("Hand Type")
 
-    # ⭐ NEW LOGIC ⭐
+    # ⭐ Hand Type gating
     if street != "River":
-        # Only No Showdown allowed before River
         allowed_hand_types = ["No Showdown"]
     else:
-        # All real showdown hands, No Showdown removed
         allowed_hand_types = [
             "High Card", "Pair", "Two Pair", "Trips", "Straight",
             "Flush", "Full House", "Quads", "Straight Flush"
@@ -282,10 +281,7 @@ with col4:
     pot_sizes = ["S", "M", "L"]
     pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}")
 
-st.subheader("All-In")
-all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}")
-
-# Showdown losers only valid on River AND not No Showdown
+# ⭐ Showdown Losers only valid on River AND not No Showdown
 showdown_losers = []
 if street == "River" and hand_type != "No Showdown":
     showdown_options = [p for p in alive_players if p != winner]
@@ -297,17 +293,23 @@ if street == "River" and hand_type != "No Showdown":
         columns=2
     )
 
-# Eliminated players only valid if All-In
+# ⭐ ALL-IN only appears on River
+all_in = False
 eliminated_players = []
-if all_in:
-    elim_options = [p for p in alive_players if p != winner]
-    eliminated_players = checkbox_grid(
-        "Eliminated Player(s)",
-        elim_options,
-        key_prefix="elim",
-        session_id=active_session["id"],
-        columns=2
-    )
+
+if street == "River":
+    st.subheader("All-In")
+    all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}")
+
+    if all_in:
+        elim_options = [p for p in alive_players if p != winner]
+        eliminated_players = checkbox_grid(
+            "Eliminated Player(s)",
+            elim_options,
+            key_prefix="elim",
+            session_id=active_session["id"],
+            columns=2
+        )
 
 if st.button("Submit Hand", type="primary"):
     data = {
@@ -326,6 +328,8 @@ if st.button("Submit Hand", type="primary"):
     supabase.table("hands").insert(data).execute()
     st.success("Hand logged!")
     st.rerun()
+
+
 
 # ============================
 # ===== END OF BLOCK 1 =======

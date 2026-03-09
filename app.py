@@ -502,102 +502,7 @@ with st.expander("Show Full Hand History", expanded=False):
 
 
 # ---------------------------------------------------------
-# 5. Session Leaderboard (Updated Columns)
-# ---------------------------------------------------------
-with st.expander("Session Leaderboard"):
-
-    stats = {p: {
-        "wins": 0,
-        "sd_wins": 0,
-        "sd_total": 0,
-        "folds": 0,
-        "eliminated_hand": None,
-        "hands_played": 0
-    } for p in players_in_game}
-
-    chronological = list(reversed(hands))  # oldest → newest
-    total_hands = len(chronological)
-
-    for idx, h in enumerate(chronological, start=1):
-        winner = h["winner"]
-        street = h["street"]
-        hand_type = h["hand_type"]
-        pot_size = h["pot_size"]
-
-        showdown_losers = h.get("showdown_losers") or []
-        eliminated = h.get("eliminated_player") or []
-
-        if isinstance(showdown_losers, str):
-            showdown_losers = [showdown_losers]
-        if isinstance(eliminated, str):
-            eliminated = [eliminated]
-
-        # Hands Played = player was alive at start of hand
-        for p in h["players_in_game"]:
-            if p in stats:
-                stats[p]["hands_played"] += 1
-
-        # Wins
-        if winner in stats:
-            stats[winner]["wins"] += 1
-
-        # Showdown stats
-        is_showdown = (street == "River" and hand_type != "No Showdown")
-        if is_showdown:
-            if winner in stats:
-                stats[winner]["sd_wins"] += 1
-                stats[winner]["sd_total"] += 1
-
-            for p in showdown_losers:
-                if p in stats:
-                    stats[p]["sd_total"] += 1
-
-        # Folds
-        for p in h["players_in_game"]:
-            if (
-                p != winner
-                and p not in showdown_losers
-                and p not in eliminated
-            ):
-                stats[p]["folds"] += 1
-
-        # Eliminated Hand
-        for p in eliminated:
-            if p in stats and stats[p]["eliminated_hand"] is None:
-                stats[p]["eliminated_hand"] = idx
-
-    # Build leaderboard rows
-    leaderboard_rows = []
-    for p in players_in_game:
-        played = stats[p]["hands_played"]
-        wins = stats[p]["wins"]
-
-        win_pct = f"{round((wins / played) * 100)}%" if played > 0 else "—"
-
-        sd_total = stats[p]["sd_total"]
-        sd_win_pct = (
-            f"{round((stats[p]['sd_wins'] / sd_total) * 100)}%"
-            if sd_total > 0 else "—"
-        )
-
-        elim = stats[p]["eliminated_hand"] if stats[p]["eliminated_hand"] else "—"
-
-        leaderboard_rows.append({
-            "Player": p,
-            "Hands Played": played,
-            "Hands Won": wins,
-            "Folds": stats[p]["folds"],
-            "Win %": win_pct,
-            "SD Win %": sd_win_pct,
-            "Eliminated Hand": elim
-        })
-
-    st.dataframe(leaderboard_rows, hide_index=True)
-
-
-
-# ---------------------------------------------------------
-# 6. Session Game Stats
+# 6. Session Game Stats (Combined with Leaderboard)
 # ---------------------------------------------------------
 with st.expander("Session Game Stats"):
 
@@ -624,6 +529,9 @@ with st.expander("Session Game Stats"):
                 "pots_won_S": 0,
                 "pots_won_M": 0,
                 "pots_won_L": 0,
+                "elim_wins": 0,
+                "busted_on_hand": None,
+                "busted_by": None,
                 "current_win_streak": 0,
                 "current_loss_streak": 0,
                 "max_win_streak": 0,
@@ -705,12 +613,15 @@ with st.expander("Session Game Stats"):
             # Eliminations
             for p in eliminated:
                 if player_stats[p]["alive"]:
-                    player_stats[p]["alive"] = False  # freeze streaks
+                    player_stats[winner]["elim_wins"] += 1
+                    player_stats[p]["alive"] = False
+                    player_stats[p]["busted_on_hand"] = idx
+                    player_stats[p]["busted_by"] = winner
 
             # Win/Loss Streak Logic (alive players only)
             for p in players_in_game:
                 if not player_stats[p]["alive"]:
-                    continue  # streaks frozen
+                    continue
 
                 if p == winner:
                     player_stats[p]["current_win_streak"] += 1
@@ -752,6 +663,41 @@ with st.expander("Session Game Stats"):
         c4, c5 = st.columns(2)
         c4.metric("All-In %", allin_pct)
         c5.metric("Elimination Rate", elim_pct)
+
+        # ---------------------------------------------------------
+        # Session Leaderboard (Integrated Here)
+        # ---------------------------------------------------------
+        st.subheader("Session Leaderboard")
+
+        leaderboard_rows = []
+        for p, s in player_stats.items():
+            played = s["hands_played"]
+            wins = s["wins"]
+            folds = s["folds"]
+
+            win_pct = round((wins / played) * 100) if played > 0 else 0
+            sd_pct = (
+                round((s["showdown_wins"] / s["showdown_total"]) * 100)
+                if s["showdown_total"] > 0 else 0
+            )
+
+            if s["busted_on_hand"]:
+                busted_display = f"{s['busted_on_hand']} ({s['busted_by']})"
+            else:
+                busted_display = "—"
+
+            leaderboard_rows.append({
+                "Player": p,
+                "Hands Played": played,
+                "Hands Won": wins,
+                "Folds": folds,
+                "Win %": win_pct,
+                "SD Win %": sd_pct,
+                "KOs": s["elim_wins"],
+                "Busted On": busted_display
+            })
+
+        st.table(leaderboard_rows)
 
         # ---------------------------------------------------------
         # Ordered Altair Charts (Horizontal, Integer Ticks)
@@ -833,7 +779,8 @@ with st.expander("Session Game Stats"):
                 "Total": total
             })
 
-        st.table(pot_rows)
+        pot_df = pd.DataFrame(pot_rows).reset_index(drop=True)
+        st.table(pot_df)
 
         # ---------------------------------------------------------
         # Awards (Sentence Style with Emojis)
@@ -877,7 +824,6 @@ with st.expander("Session Game Stats"):
         st.write(f"📈 **Most Active Player:** {most_active[0]} participated in {int(most_active[1]['showdown_participation'])} showdowns.")
         st.write(f"🪫 **Most Passive Player:** {most_passive[0]} folded {int(most_passive[1]['folds'])} times.")
         st.write(f"🏆 **Most Dominant Player:** {dominant_player} leads with a {dominant_win_pct}% win rate (min 5 hands).")
-
 
 
 # ---------------------------------------------------------

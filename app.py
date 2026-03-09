@@ -259,11 +259,23 @@ col3, col4 = st.columns(2)
 
 with col3:
     st.subheader("Hand Type")
-    hand_types = [
-        "High Card", "Pair", "Two Pair", "Trips", "Straight",
-        "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
-    ]
-    hand_type = st.radio("", hand_types, key=f"handtype_radio_{active_session['id']}")
+
+    # ⭐ NEW LOGIC ⭐
+    if street != "River":
+        # Only No Showdown allowed before River
+        allowed_hand_types = ["No Showdown"]
+    else:
+        # All real showdown hands, No Showdown removed
+        allowed_hand_types = [
+            "High Card", "Pair", "Two Pair", "Trips", "Straight",
+            "Flush", "Full House", "Quads", "Straight Flush"
+        ]
+
+    hand_type = st.radio(
+        "",
+        allowed_hand_types,
+        key=f"handtype_radio_{active_session['id']}"
+    )
 
 with col4:
     st.subheader("Pot Size")
@@ -273,6 +285,7 @@ with col4:
 st.subheader("All-In")
 all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}")
 
+# Showdown losers only valid on River AND not No Showdown
 showdown_losers = []
 if street == "River" and hand_type != "No Showdown":
     showdown_options = [p for p in alive_players if p != winner]
@@ -284,6 +297,7 @@ if street == "River" and hand_type != "No Showdown":
         columns=2
     )
 
+# Eliminated players only valid if All-In
 eliminated_players = []
 if all_in:
     elim_options = [p for p in alive_players if p != winner]

@@ -339,6 +339,9 @@ with st.expander("Log a Hand", expanded=False):
 # ===== START OF BLOCK 2 =====
 # ============================
 
+
+# Building Player Hand Matrix details
+
 def build_player_hand_matrix(hands, players_in_game):
     """
     Build a full per-player-per-hand dataset with:

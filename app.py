@@ -1226,6 +1226,9 @@ with st.expander("Admin Tools (Danger Zone)"):
         st.write("Could not generate player-hand matrix CSV.")
         print("Matrix CSV error:", e)
 
+
+    st.markdown("---")
+
     st.write("### Delete a Global Player")
 
     player_to_delete = st.selectbox(

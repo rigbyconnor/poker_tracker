@@ -115,12 +115,9 @@ if "active_session_id" not in st.session_state:
 # ---------------------------------------------------------
 # 1. Session Selector
 # ---------------------------------------------------------
-st.markdown(
-    "<h3 style='text-align: center; margin-bottom: 0;'>Poker Night Tracker</h3>",
-    unsafe_allow_html=True
-)
 
-st.subheader("Select Game Session")
+
+st.subheader("Game Session")
 
 if st.session_state["active_session_id"]:
     active_session = next(
@@ -343,11 +340,11 @@ with st.expander("Log a Hand", expanded=False):
 # ============================
 
 # ---------------------------------------------------------
-# 4. Hand History (Tap‑to‑Expand Actions)
+# 4. Session Data (Tap‑to‑Expand Actions)
 # ---------------------------------------------------------
-st.header("Hand History")
+st.header("Session Data")
 
-with st.expander("Show Full Hand History", expanded=False):
+with st.expander("Show Session Data", expanded=False):
 
     total_hands = len(hands)
 
@@ -1013,6 +1010,8 @@ with st.expander("Session Game Stats"):
 # ---------------------------------------------------------
 # 7. Admin Tools (Bottom of Page)
 # ---------------------------------------------------------
+
+st.header("Admin")
 with st.expander("Admin Tools (Danger Zone)"):
 
     st.write("### Delete a Global Player")
@@ -1077,4 +1076,3 @@ with st.expander("Admin Tools (Danger Zone)"):
 # ============================
 # ===== END OF BLOCK 2 =======
 # ============================
-           

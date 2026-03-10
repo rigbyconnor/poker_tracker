@@ -579,9 +579,9 @@ with st.expander("Session Game Stats"):
             secs = int(avg_hand_time % 60)
 
             if mins > 0:
-            avg_hand_time_str = f"{mins} min {secs}s"
+                avg_hand_time_str = f"{mins} min {secs}s"
             else:
-        avg_hand_time_str = f"{secs}s"
+                avg_hand_time_str = f"{secs}s"
 
         except Exception as e:
             print("Error computing average hand time:", e)

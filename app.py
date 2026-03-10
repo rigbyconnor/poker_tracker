@@ -1145,28 +1145,28 @@ with st.expander("Session Game Stats"):
 
                 if sd_played >= 5:
                     pct = (sd_won / sd_played) * 100
-                    sd_candidates.append((p, pct, sd_played))
+                    sd_candidates.append((p, pct, sd_played, sd_won))
 
             if sd_candidates:
                 # Sort by showdown win %
                 sd_sorted = sorted(sd_candidates, key=lambda x: x[1], reverse=True)
 
                 # Best showdown performer
-                best_p, best_pct, best_played = sd_sorted[0]
+                best_p, best_pct, best_played, best_wins = sd_sorted[0]
                 if sum(1 for x in sd_sorted if x[1] == best_pct) == 1:
                     st.write(
                         f"🎯 **The Closer:** {best_p} won {best_pct:.0f}% of showdowns "
-                        f"({best_played} showdowns, min 5)."
+                        f"({best_wins} wins in {best_played} showdowns, min 5)."
                     )
                 else:
                     st.write("🎯 **The Closer:**")
 
                 # Worst showdown performer
-                worst_p, worst_pct, worst_played = sd_sorted[-1]
+                worst_p, worst_pct, worst_played, worst_wins = sd_sorted[-1]
                 if sum(1 for x in sd_sorted if x[1] == worst_pct) == 1:
                     st.write(
                         f"🫣 **I Should Have Folded:** {worst_p} won only {worst_pct:.0f}% "
-                        f"of showdowns ({worst_played} showdowns, min 5)."
+                        f"({worst_wins} wins in {worst_played} showdowns, min 5)."
                     )
                 else:
                     st.write("🫣 **I Should Have Folded:**")

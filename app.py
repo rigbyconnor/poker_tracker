@@ -1133,6 +1133,52 @@ with st.expander("Session Game Stats"):
         except Exception as e:
             print("Error computing Fastest Bustout:", e)
 
+
+        # ---------------------------------------------------------
+        # Showdown Win Percentage Awards
+        # ---------------------------------------------------------
+        try:
+            sd_candidates = []
+            for p, s in player_stats.items():
+                sd_played = s["showdown_participation"]
+                sd_won = s["showdown_wins"]
+
+                if sd_played >= 5:
+                    pct = (sd_won / sd_played) * 100
+                    sd_candidates.append((p, pct, sd_played))
+
+            if sd_candidates:
+                # Sort by showdown win %
+                sd_sorted = sorted(sd_candidates, key=lambda x: x[1], reverse=True)
+
+                # Best showdown performer
+                best_p, best_pct, best_played = sd_sorted[0]
+                if sum(1 for x in sd_sorted if x[1] == best_pct) == 1:
+                    st.write(
+                        f"🎯 **The Closer:** {best_p} won {best_pct:.0f}% of showdowns "
+                        f"({best_played} showdowns, min 5)."
+                    )
+                else:
+                    st.write("🎯 **The Closer:**")
+
+                # Worst showdown performer
+                worst_p, worst_pct, worst_played = sd_sorted[-1]
+                if sum(1 for x in sd_sorted if x[1] == worst_pct) == 1:
+                    st.write(
+                        f"🫣 **I Should Have Folded:** {worst_p} won only {worst_pct:.0f}% "
+                        f"of showdowns ({worst_played} showdowns, min 5)."
+                    )
+                else:
+                    st.write("🫣 **I Should Have Folded:**")
+
+            else:
+                st.write("🎯 **The Closer:**")
+                st.write("🫣 **I Should Have Folded:**")
+
+        except Exception as e:
+            print("Error computing showdown awards:", e)
+
+
         # Most Active
         try:
             active_p, active_v = get_clear_winner("showdown_participation")

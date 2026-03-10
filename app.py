@@ -339,203 +339,196 @@ with st.expander("Log a Hand", expanded=False):
 
 
 
-# ============================
-# ===== END OF BLOCK 1 =======
-# ============================
-
-
-# ============================
-# ======== BLOCK 2 ===========
-# ===== START OF BLOCK 2 =====
-# ============================
-
-
 # ---------------------------------------------------------
-# 4. Hand History (Tap‑to‑Expand Actions)
+# 4. Session Dashboard (Tabbed Interface)
 # ---------------------------------------------------------
-st.header("Hand History")
+st.header("Session Dashboard")
 
-with st.expander("Show Full Hand History", expanded=False):
+tab_history, tab_stats, tab_admin = st.tabs(["History", "Stats", "Admin Tools"])
 
-    total_hands = len(hands)
 
-    # ---------------------------------------------------------
-    # Helper: compute historical alive players for a given hand
-    # ---------------------------------------------------------
-    def get_alive_players_at_hand(target_hand_id):
-        eliminated_before = set()
-        chronological = list(reversed(hands))  # oldest → newest
 
-        for h in chronological:
-            if h["id"] == target_hand_id:
-                break
+# -------------------------
+# HISTORY TAB
+# -------------------------
+with tab_history:
+
+    st.subheader("Hand History")
+
+    with st.expander("Show Full Hand History", expanded=False):
+
+        total_hands = len(hands)
+
+        # Helper: compute historical alive players for a given hand
+        def get_alive_players_at_hand(target_hand_id):
+            eliminated_before = set()
+            chronological = list(reversed(hands))  # oldest → newest
+
+            for h in chronological:
+                if h["id"] == target_hand_id:
+                    break
+                eliminated = h.get("eliminated_player") or []
+                if isinstance(eliminated, str):
+                    eliminated = [eliminated]
+                for p in eliminated:
+                    eliminated_before.add(p)
+
+            return [p for p in players_in_game if p not in eliminated_before]
+
+        # Render a single hand (tap‑to‑expand)
+        def render_hand(h, hand_number):
+            winner = h["winner"]
+            street = h["street"]
+            hand_type = h["hand_type"]
+            pot_size = h["pot_size"]
+
+            showdown_losers = h.get("showdown_losers") or []
             eliminated = h.get("eliminated_player") or []
+
+            if isinstance(showdown_losers, str):
+                showdown_losers = [showdown_losers]
             if isinstance(eliminated, str):
                 eliminated = [eliminated]
-            for p in eliminated:
-                eliminated_before.add(p)
 
-        return [p for p in players_in_game if p not in eliminated_before]
-
-    # ---------------------------------------------------------
-    # Render a single hand (tap‑to‑expand)
-    # ---------------------------------------------------------
-    def render_hand(h, hand_number):
-        winner = h["winner"]
-        street = h["street"]
-        hand_type = h["hand_type"]
-        pot_size = h["pot_size"]
-
-        showdown_losers = h.get("showdown_losers") or []
-        eliminated = h.get("eliminated_player") or []
-
-        if isinstance(showdown_losers, str):
-            showdown_losers = [showdown_losers]
-        if isinstance(eliminated, str):
-            eliminated = [eliminated]
-
-        # Build summary line
-        line = (
-            f"Hand #{hand_number} — {winner} won with {hand_type} "
-            f"on the {street} (Pot: {pot_size})"
-        )
-
-        if showdown_losers:
-            line += f" — Showdown Losers: {', '.join(showdown_losers)}"
-        if eliminated:
-            line += f" — Eliminated: {', '.join(eliminated)}"
-
-        # Tappable row
-        if st.button(line, key=f"tap_{h['id']}", use_container_width=True):
-            st.session_state["open_hand"] = (
-                None if st.session_state.get("open_hand") == h["id"] else h["id"]
+            line = (
+                f"Hand #{hand_number} — {winner} won with {hand_type} "
+                f"on the {street} (Pot: {pot_size})"
             )
 
-        # Expanded actions
-        if st.session_state.get("open_hand") == h["id"]:
-            with st.expander(f"Actions for Hand #{hand_number}", expanded=True):
+            if showdown_losers:
+                line += f" — Showdown Losers: {', '.join(showdown_losers)}"
+            if eliminated:
+                line += f" — Eliminated: {', '.join(eliminated)}"
 
-                # Delete
-                if st.button(f"Delete Hand #{hand_number}", key=f"delete_{h['id']}"):
-                    st.session_state["confirm_delete"] = h["id"]
+            if st.button(line, key=f"tap_{h['id']}", use_container_width=True):
+                st.session_state["open_hand"] = (
+                    None if st.session_state.get("open_hand") == h["id"] else h["id"]
+                )
 
-                if st.session_state.get("confirm_delete") == h["id"]:
-                    st.warning("Are you sure you want to delete this hand?")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("Yes, Delete", key=f"yes_delete_{h['id']}"):
-                            supabase.table("hands").delete().eq("id", h["id"]).execute()
-                            st.success("Hand deleted.")
-                            st.session_state["confirm_delete"] = None
-                            st.session_state["open_hand"] = None
-                            st.rerun()
-                    with c2:
-                        if st.button("Cancel", key=f"cancel_delete_{h['id']}"):
-                            st.session_state["confirm_delete"] = None
+            if st.session_state.get("open_hand") == h["id"]:
+                with st.expander(f"Actions for Hand #{hand_number}", expanded=True):
 
-                # Edit
-                if st.button(f"Edit Hand #{hand_number}", key=f"edit_{h['id']}"):
-                    st.session_state["editing_hand"] = h["id"]
+                    # Delete
+                    if st.button(f"Delete Hand #{hand_number}", key=f"delete_{h['id']}"):
+                        st.session_state["confirm_delete"] = h["id"]
 
-                # Edit form
-                if st.session_state.get("editing_hand") == h["id"]:
-                    with st.expander(f"Editing Hand #{hand_number}", expanded=True):
+                    if st.session_state.get("confirm_delete") == h["id"]:
+                        st.warning("Are you sure you want to delete this hand?")
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button("Yes, Delete", key=f"yes_delete_{h['id']}"):
+                                supabase.table("hands").delete().eq("id", h["id"]).execute()
+                                st.success("Hand deleted.")
+                                st.session_state["confirm_delete"] = None
+                                st.session_state["open_hand"] = None
+                                st.rerun()
+                        with c2:
+                            if st.button("Cancel", key=f"cancel_delete_{h['id']}"):
+                                st.session_state["confirm_delete"] = None
 
-                        alive_at_time = get_alive_players_at_hand(h["id"])
+                    # Edit
+                    if st.button(f"Edit Hand #{hand_number}", key=f"edit_{h['id']}"):
+                        st.session_state["editing_hand"] = h["id"]
 
-                        new_winner = st.radio(
-                            "Winner",
-                            alive_at_time,
-                            index=alive_at_time.index(h["winner"]),
-                            key=f"edit_winner_{h['id']}"
-                        )
+                    if st.session_state.get("editing_hand") == h["id"]:
+                        with st.expander(f"Editing Hand #{hand_number}", expanded=True):
 
-                        streets = ["Preflop", "Flop", "Turn", "River"]
-                        new_street = st.radio(
-                            "Street",
-                            streets,
-                            index=streets.index(h["street"]),
-                            key=f"edit_street_{h['id']}"
-                        )
+                            alive_at_time = get_alive_players_at_hand(h["id"])
 
-                        hand_types = [
-                            "High Card", "Pair", "Two Pair", "Trips", "Straight",
-                            "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
-                        ]
-                        new_hand_type = st.radio(
-                            "Hand Type",
-                            hand_types,
-                            index=hand_types.index(h["hand_type"]),
-                            key=f"edit_handtype_{h['id']}"
-                        )
-
-                        pot_sizes = ["S", "M", "L"]
-                        new_pot_size = st.radio(
-                            "Pot Size",
-                            pot_sizes,
-                            index=pot_sizes.index(h["pot_size"]),
-                            key=f"edit_potsize_{h['id']}"
-                        )
-
-                        new_all_in = st.checkbox(
-                            "All-In",
-                            value=h["all_in"],
-                            key=f"edit_allin_{h['id']}"
-                        )
-
-                        new_showdown_losers = []
-                        if new_street == "River" and new_hand_type != "No Showdown":
-                            loser_options = [p for p in alive_at_time if p != new_winner]
-                            new_showdown_losers = checkbox_grid(
-                                "Showdown Losers",
-                                loser_options,
-                                key_prefix="edit_losers",
-                                session_id=h["id"],
-                                prechecked=h.get("showdown_losers") or []
+                            new_winner = st.radio(
+                                "Winner",
+                                alive_at_time,
+                                index=alive_at_time.index(h["winner"]),
+                                key=f"edit_winner_{h['id']}"
                             )
 
-                        new_eliminated = []
-                        if new_all_in:
-                            elim_options = [p for p in alive_at_time if p != new_winner]
-                            new_eliminated = checkbox_grid(
-                                "Eliminated Player(s)",
-                                elim_options,
-                                key_prefix="edit_elim",
-                                session_id=h["id"],
-                                prechecked=h.get("eliminated_player") or []
+                            streets = ["Preflop", "Flop", "Turn", "River"]
+                            new_street = st.radio(
+                                "Street",
+                                streets,
+                                index=streets.index(h["street"]),
+                                key=f"edit_street_{h['id']}"
                             )
 
-                        if st.button("Save Changes", key=f"save_edit_{h['id']}"):
-                            updated = {
-                                "winner": new_winner,
-                                "street": new_street,
-                                "hand_type": new_hand_type,
-                                "pot_size": new_pot_size,
-                                "all_in": new_all_in,
-                                "showdown_losers": new_showdown_losers,
-                                "eliminated_player": new_eliminated,
-                            }
-                            supabase.table("hands").update(updated).eq("id", h["id"]).execute()
-                            st.success("Hand updated.")
-                            st.session_state["editing_hand"] = None
-                            st.session_state["open_hand"] = None
-                            st.rerun()
+                            hand_types = [
+                                "High Card", "Pair", "Two Pair", "Trips", "Straight",
+                                "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
+                            ]
+                            new_hand_type = st.radio(
+                                "Hand Type",
+                                hand_types,
+                                index=hand_types.index(h["hand_type"]),
+                                key=f"edit_handtype_{h['id']}"
+                            )
 
-    # Render ALL hands
-    for index, h in enumerate(hands):
-        hand_number = total_hands - index
-        render_hand(h, hand_number)
+                            pot_sizes = ["S", "M", "L"]
+                            new_pot_size = st.radio(
+                                "Pot Size",
+                                pot_sizes,
+                                index=pot_sizes.index(h["pot_size"]),
+                                key=f"edit_potsize_{h['id']}"
+                            )
+
+                            new_all_in = st.checkbox(
+                                "All-In",
+                                value=h["all_in"],
+                                key=f"edit_allin_{h['id']}"
+                            )
+
+                            new_showdown_losers = []
+                            if new_street == "River" and new_hand_type != "No Showdown":
+                                loser_options = [p for p in alive_at_time if p != new_winner]
+                                new_showdown_losers = checkbox_grid(
+                                    "Showdown Losers",
+                                    loser_options,
+                                    key_prefix="edit_losers",
+                                    session_id=h["id"],
+                                    prechecked=h.get("showdown_losers") or []
+                                )
+
+                            new_eliminated = []
+                            if new_all_in:
+                                elim_options = [p for p in alive_at_time if p != new_winner]
+                                new_eliminated = checkbox_grid(
+                                    "Eliminated Player(s)",
+                                    elim_options,
+                                    key_prefix="edit_elim",
+                                    session_id=h["id"],
+                                    prechecked=h.get("eliminated_player") or []
+                                )
+
+                            if st.button("Save Changes", key=f"save_edit_{h['id']}"):
+                                updated = {
+                                    "winner": new_winner,
+                                    "street": new_street,
+                                    "hand_type": new_hand_type,
+                                    "pot_size": new_pot_size,
+                                    "all_in": new_all_in,
+                                    "showdown_losers": new_showdown_losers,
+                                    "eliminated_player": new_eliminated,
+                                }
+                                supabase.table("hands").update(updated).eq("id", h["id"]).execute()
+                                st.success("Hand updated.")
+                                st.session_state["editing_hand"] = None
+                                st.session_state["open_hand"] = None
+                                st.rerun()
+
+        # Render all hands
+        for index, h in enumerate(hands):
+            hand_number = total_hands - index
+            render_hand(h, hand_number)
 
 
+# -------------------------
+# STATS TAB
+# -------------------------
+with tab_stats:
 
-
-# ---------------------------------------------------------
-# 6. Session Game Stats (Hardened + Sortable Tables)
-# ---------------------------------------------------------
-with st.expander("Session Game Stats"):
+    st.subheader("Session Game Stats")
 
     if len(hands) < 2:
         st.info("Not enough hands logged to compute game stats yet.")
+
     else:
         import altair as alt
 
@@ -577,8 +570,7 @@ with st.expander("Session Game Stats"):
             deltas = [(times[i+1] - times[i]).total_seconds() for i in range(len(times)-1)]
             avg_hand_time = sum(deltas) / len(deltas)
             avg_hand_time_str = f"{round(avg_hand_time)} sec"
-        except Exception as e:
-            print("Error computing average hand time:", e)
+        except Exception:
             avg_hand_time_str = "—"
 
         # ---------------------------------------------------------
@@ -586,25 +578,24 @@ with st.expander("Session Game Stats"):
         # ---------------------------------------------------------
         for idx, h in enumerate(chronological, start=1):
             try:
-                # Validate players_in_game
                 players_list = h.get("players_in_game")
                 if not isinstance(players_list, list):
-                    print(f"Skipping hand #{idx}: players_in_game invalid")
                     continue
 
-                alive_players = [p for p in players_list if p in player_stats and player_stats[p]["alive"]]
+                alive_players_at_time = [
+                    p for p in players_list
+                    if p in player_stats and player_stats[p]["alive"]
+                ]
 
                 # Hands played
-                for p in alive_players:
+                for p in alive_players_at_time:
                     player_stats[p]["hands_played"] += 1
 
                 # Winner
                 winner = h.get("winner")
                 if winner not in player_stats:
-                    print(f"Skipping hand #{idx}: invalid winner {winner}")
                     continue
 
-                # Wins
                 if player_stats[winner]["alive"]:
                     player_stats[winner]["wins"] += 1
 
@@ -644,7 +635,7 @@ with st.expander("Session Game Stats"):
                             player_stats[p]["showdown_total"] += 1
 
                 # Folds
-                for p in alive_players:
+                for p in alive_players_at_time:
                     if (
                         p != winner
                         and p not in showdown_losers
@@ -684,12 +675,11 @@ with st.expander("Session Game Stats"):
                             player_stats[p]["current_loss_streak"]
                         )
 
-            except Exception as e:
-                print(f"Skipping malformed hand #{idx}: {e}")
+            except Exception:
                 continue
 
         # ---------------------------------------------------------
-        # Summary Metrics (Hardened)
+        # Summary Metrics
         # ---------------------------------------------------------
         try:
             showdown_hands = sum(
@@ -724,52 +714,45 @@ with st.expander("Session Game Stats"):
         c5.metric("Elimination Rate", elim_pct)
 
         # ---------------------------------------------------------
-        # Leaderboard (Sortable + Hardened)
+        # Leaderboard
         # ---------------------------------------------------------
         st.subheader("Session Leaderboard")
 
         leaderboard_rows = []
-        try:
-            for p, s in player_stats.items():
-                played = s["hands_played"]
-                wins = s["wins"]
-                folds = s["folds"]
+        for p, s in player_stats.items():
+            played = s["hands_played"]
+            wins = s["wins"]
+            folds = s["folds"]
 
-                win_pct = round((wins / played) * 100) if played > 0 else 0
-                sd_pct = (
-                    round((s["showdown_wins"] / s["showdown_total"]) * 100)
-                    if s["showdown_total"] > 0 else 0
-                )
-
-                if s["busted_on_hand"]:
-                    busted_display = f"{s['busted_on_hand']} ({s['busted_by']})"
-                else:
-                    busted_display = "—"
-
-                leaderboard_rows.append({
-                    "Player": p,
-                    "Hands Played": played,
-                    "Hands Won": wins,
-                    "Folds": folds,
-                    "Win %": win_pct,
-                    "SD Win %": sd_pct,
-                    "KOs": s["elim_wins"],
-                    "Busted On": busted_display
-                })
-        except Exception as e:
-            print("Error building leaderboard_rows:", e)
-
-        try:
-            leaderboard_df = pd.DataFrame(leaderboard_rows).sort_values(
-                by="Hands Won", ascending=False
+            win_pct = round((wins / played) * 100) if played > 0 else 0
+            sd_pct = (
+                round((s["showdown_wins"] / s["showdown_total"]) * 100)
+                if s["showdown_total"] > 0 else 0
             )
-            st.dataframe(leaderboard_df, use_container_width=True)
-        except Exception as e:
-            print("Error rendering leaderboard table:", e)
-            st.write("Leaderboard unavailable.")
+
+            if s["busted_on_hand"]:
+                busted_display = f"{s['busted_on_hand']} ({s['busted_by']})"
+            else:
+                busted_display = "—"
+
+            leaderboard_rows.append({
+                "Player": p,
+                "Hands Played": played,
+                "Hands Won": wins,
+                "Folds": folds,
+                "Win %": win_pct,
+                "SD Win %": sd_pct,
+                "KOs": s["elim_wins"],
+                "Busted On": busted_display
+            })
+
+        leaderboard_df = pd.DataFrame(leaderboard_rows).sort_values(
+            by="Hands Won", ascending=False
+        )
+        st.dataframe(leaderboard_df, use_container_width=True)
 
         # ---------------------------------------------------------
-        # Charts (Hardened)
+        # Charts
         # ---------------------------------------------------------
         st.subheader("Pot Size Distribution")
         try:
@@ -780,7 +763,9 @@ with st.expander("Session Game Stats"):
                 "Pot Size": pot_order,
                 "Count": [pot_counts.get(x, 0) for x in pot_order]
             })
-            pot_df_chart["Pot Size"] = pd.Categorical(pot_df_chart["Pot Size"], categories=pot_order, ordered=True)
+            pot_df_chart["Pot Size"] = pd.Categorical(
+                pot_df_chart["Pot Size"], categories=pot_order, ordered=True
+            )
 
             st.altair_chart(
                 alt.Chart(pot_df_chart).mark_bar().encode(
@@ -789,8 +774,8 @@ with st.expander("Session Game Stats"):
                 ),
                 use_container_width=True
             )
-        except Exception as e:
-            print("Error rendering pot size chart:", e)
+        except Exception:
+            pass
 
         st.subheader("Winning Hand Type Distribution")
         try:
@@ -800,11 +785,14 @@ with st.expander("Session Game Stats"):
             ]
             hand_types = [h.get("hand_type") for h in chronological]
             hand_counts = pd.Series(hand_types).value_counts()
+
             hand_df_chart = pd.DataFrame({
                 "Hand Type": hand_order,
                 "Count": [hand_counts.get(x, 0) for x in hand_order]
             })
-            hand_df_chart["Hand Type"] = pd.Categorical(hand_df_chart["Hand Type"], categories=hand_order, ordered=True)
+            hand_df_chart["Hand Type"] = pd.Categorical(
+                hand_df_chart["Hand Type"], categories=hand_order, ordered=True
+            )
 
             st.altair_chart(
                 alt.Chart(hand_df_chart).mark_bar().encode(
@@ -813,223 +801,71 @@ with st.expander("Session Game Stats"):
                 ),
                 use_container_width=True
             )
-        except Exception as e:
-            print("Error rendering hand type chart:", e)
-
-        st.subheader("Street End Distribution")
-        try:
-            street_order = ["Preflop", "Flop", "Turn", "River"]
-            streets = [h.get("street") for h in chronological]
-            street_counts = pd.Series(streets).value_counts()
-            street_df_chart = pd.DataFrame({
-                "Street": street_order,
-                "Count": [street_counts.get(x, 0) for x in street_order]
-            })
-            street_df_chart["Street"] = pd.Categorical(street_df_chart["Street"], categories=street_order, ordered=True)
-
-            st.altair_chart(
-                alt.Chart(street_df_chart).mark_bar().encode(
-                    y=alt.Y("Street:N", sort=street_order),
-                    x=alt.X("Count:Q", axis=alt.Axis(tickMinStep=1))
-                ),
-                use_container_width=True
-            )
-        except Exception as e:
-            print("Error rendering street chart:", e)
-
-        # ---------------------------------------------------------
-        # Pot Size Distribution by Player (Sortable + Hardened)
-        # ---------------------------------------------------------
-        st.subheader("Pot Size Distribution by Player (Wins Only)")
-
-        pot_rows = []
-        try:
-            for p, s in player_stats.items():
-                S = s["pots_won_S"]
-                M = s["pots_won_M"]
-                L = s["pots_won_L"]
-                total = S + M + L
-
-                pot_rows.append({
-                    "Player": p,
-                    "S": S,
-                    "M": M,
-                    "L": L,
-                    "Total": total
-                })
-        except Exception as e:
-            print("Error building pot_rows:", e)
-
-        try:
-            pot_df = pd.DataFrame(pot_rows).sort_values(
-                by="Total", ascending=False
-            )
-            st.dataframe(pot_df, use_container_width=True)
-        except Exception as e:
-            print("Error rendering pot table:", e)
-            st.write("Pot size table unavailable.")
-
-        # ---------------------------------------------------------
-        # Awards (Hardened)
-        # ---------------------------------------------------------
-        st.subheader("Awards")
-
-        def get_clear_winner(key):
-            try:
-                values = [s[key] for s in player_stats.values()]
-                max_val = max(values)
-                if values.count(max_val) == 1 and max_val > 0:
-                    for p, s in player_stats.items():
-                        if s[key] == max_val:
-                            return p, max_val
-            except Exception as e:
-                print(f"Award error ({key}):", e)
-            return None, None
-
-        # Heater Award
-        try:
-            heater_p, heater_v = get_clear_winner("max_win_streak")
-            if heater_p:
-                st.write(f"🔥 **Heater Award:** {heater_p} peaked with a {heater_v}-hand win streak.")
-            else:
-                st.write("🔥 **Heater Award:**")
-        except Exception as e:
-            print("Error computing Heater Award:", e)
-
-        # Ice Cold Award
-        try:
-            cold_p, cold_v = get_clear_winner("max_loss_streak")
-            if cold_p:
-                st.write(f"❄️ **Ice Cold Award:** {cold_p} suffered a {cold_v}-hand losing streak.")
-            else:
-                st.write("❄️ **Ice Cold Award:**")
-        except Exception as e:
-            print("Error computing Ice Cold Award:", e)
-
-        # Fastest Bustout
-        try:
-            elim_order = []
-            for idx, h in enumerate(chronological, start=1):
-                eliminated = h.get("eliminated_player") or []
-                if isinstance(eliminated, str):
-                    eliminated = [eliminated]
-                for p in eliminated:
-                    elim_order.append((p, idx))
-
-            if elim_order:
-                fb_p, fb_h = elim_order[0]
-                st.write(f"💀 **Fastest Bustout:** {fb_p} was eliminated on Hand #{fb_h}.")
-            else:
-                st.write("💀 **Fastest Bustout:**")
-        except Exception as e:
-            print("Error computing Fastest Bustout:", e)
-
-        # Most Active
-        try:
-            active_p, active_v = get_clear_winner("showdown_participation")
-            if active_p:
-                st.write(f"📈 **Most Active Player:** {active_p} participated in {active_v} showdowns.")
-            else:
-                st.write("📈 **Most Active Player:**")
-        except Exception as e:
-            print("Error computing Most Active Award:", e)
-
-        # Most Passive
-        try:
-            passive_p, passive_v = get_clear_winner("folds")
-            if passive_p:
-                st.write(f"🪫 **Most Passive Player:** {passive_p} folded {passive_v} times.")
-            else:
-                st.write("🪫 **Most Passive Player:**")
-        except Exception as e:
-            print("Error computing Most Passive Award:", e)
-
-        # Aggression Award
-        try:
-            agg_p, agg_v = get_clear_winner("aggressive_wins")
-            if agg_p:
-                st.write(f"⚔️ **Aggression Award:** {agg_p} won {agg_v} pots before the river.")
-            else:
-                st.write("⚔️ **Aggression Award:**")
-        except Exception as e:
-            print("Error computing Aggression Award:", e)
-
-        # Most Dominant Player
-        try:
-            dom_candidates = [(p, s) for p, s in player_stats.items() if s["hands_played"] >= 5]
-            if dom_candidates:
-                win_rates = [(p, s["wins"] / s["hands_played"]) for p, s in dom_candidates]
-                max_rate = max(v for _, v in win_rates)
-                if sum(1 for _, v in win_rates if v == max_rate) == 1:
-                    dom_p = next(p for p, v in win_rates if v == max_rate)
-                    dom_pct = round(max_rate * 100)
-                    st.write(f"🏆 **Most Dominant Player:** {dom_p} leads with a {dom_pct}% win rate.")
-                else:
-                    st.write("🏆 **Most Dominant Player:**")
-            else:
-                st.write("🏆 **Most Dominant Player:**")
-        except Exception as e:
-            print("Error computing Dominant Player Award:", e)
+        except Exception:
+            pass
 
 
+# -------------------------
+# ADMIN TOOLS TAB
+# -------------------------
+with tab_admin:
 
+    st.subheader("Admin Tools (Danger Zone)")
 
-# ---------------------------------------------------------
-# 7. Admin Tools (Bottom of Page)
-# ---------------------------------------------------------
-with st.expander("Admin Tools (Danger Zone)"):
+    st.warning("These actions cannot be undone. Proceed carefully.")
 
-    st.write("### Delete a Global Player")
-    player_to_delete = st.selectbox(
-        "Select player to delete:",
-        player_names,
-        key="delete_player_select"
-    )
+    # -------------------------
+    # Delete Entire Session
+    # -------------------------
+    if st.button("Delete Entire Session", type="secondary"):
+        st.session_state["confirm_delete_session"] = True
 
-    if st.button("Delete Player", key="delete_player_btn"):
-        st.session_state["confirm_delete_player"] = player_to_delete
-
-    if st.session_state.get("confirm_delete_player") == player_to_delete:
-        st.warning(f"Are you sure you want to delete '{player_to_delete}' from the global list?")
+    if st.session_state.get("confirm_delete_session"):
+        st.error("Are you sure you want to delete this entire session and all hands?")
         c1, c2 = st.columns(2)
+
         with c1:
-            if st.button("Yes, Delete Player", key="confirm_delete_player_yes"):
-                supabase.table("players").delete().eq("name", player_to_delete).execute()
-                st.success(f"Deleted player '{player_to_delete}'.")
-                st.session_state["confirm_delete_player"] = None
-                st.rerun()
-        with c2:
-            if st.button("Cancel", key="confirm_delete_player_no"):
-                st.session_state["confirm_delete_player"] = None
+            if st.button("Yes, Delete Session"):
+                # Delete all hands for this session
+                supabase.table("hands").delete().eq("game_name", active_session["name"]).execute()
 
-    st.markdown("---")
+                # Delete the session itself
+                supabase.table("sessions").delete().eq("id", active_session["id"]).execute()
 
-    st.write("### Delete an Entire Session")
-    session_to_delete = st.selectbox(
-        "Select session to delete:",
-        session_names,
-        key="delete_session_select"
-    )
-
-    if st.button("Delete Session", key="delete_session_btn"):
-        st.session_state["confirm_delete_session"] = session_to_delete
-
-    if st.session_state.get("confirm_delete_session") == session_to_delete:
-        st.warning(f"Delete session '{session_to_delete}' and ALL hands in it?")
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("Yes, Delete Session", key="confirm_delete_session_yes"):
-                supabase.table("hands").delete().eq("game_name", session_to_delete).execute()
-                supabase.table("sessions").delete().eq("name", session_to_delete).execute()
-
-                st.success(f"Session '{session_to_delete}' deleted.")
+                st.success("Session deleted.")
                 st.session_state["confirm_delete_session"] = None
                 st.session_state["active_session_id"] = None
                 st.rerun()
+
         with c2:
-            if st.button("Cancel", key="confirm_delete_session_no"):
+            if st.button("Cancel Delete Session"):
                 st.session_state["confirm_delete_session"] = None
 
-# ============================
-# ===== END OF BLOCK 2 =======
-# ============================
+    st.markdown("---")
+
+    # -------------------------
+    # Reset Eliminations
+    # -------------------------
+    st.subheader("Reset Eliminations")
+
+    st.write("This will restore all players to 'alive' status without deleting hands.")
+
+    if st.button("Reset Eliminations"):
+        # Reload all hands
+        all_hands = load_hands_for_session(active_session["name"])
+
+        # Remove eliminated_player field from all hands
+        for h in all_hands:
+            supabase.table("hands").update({"eliminated_player": []}).eq("id", h["id"]).execute()
+
+        st.success("All eliminations reset.")
+        st.rerun()
+
+    st.markdown("---")
+
+    # -------------------------
+    # Export Data (Optional Future Feature)
+    # -------------------------
+    st.subheader("Export Session Data")
+
+    st.info("Coming soon: CSV / JSON export for hands and stats.")

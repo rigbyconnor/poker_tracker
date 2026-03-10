@@ -574,11 +574,18 @@ with st.expander("Session Game Stats"):
             times = [datetime.fromisoformat(h["created_at"]) for h in chronological]
             deltas = [(times[i + 1] - times[i]).total_seconds() for i in range(len(times) - 1)]
             avg_hand_time = sum(deltas) / len(deltas)
-            avg_hand_time_str = f"{round(avg_hand_time)} sec"
+
+            mins = int(avg_hand_time // 60)
+            secs = int(avg_hand_time % 60)
+
+            if mins > 0:
+            avg_hand_time_str = f"{mins} min {secs}s"
+            else:
+        avg_hand_time_str = f"{secs}s"
+
         except Exception as e:
             print("Error computing average hand time:", e)
             avg_hand_time_str = "—"
-
         # ---------------------------------------------------------
         # Process Hands (FULLY HARDENED)
         # ---------------------------------------------------------

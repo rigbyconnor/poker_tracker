@@ -344,7 +344,7 @@ with st.expander("Log a Hand", expanded=False):
 # ---------------------------------------------------------
 st.header("Session Data")
 
-with st.expander("Show Session Data", expanded=False):
+with st.expander("Hand History", expanded=False):
 
     total_hands = len(hands)
 

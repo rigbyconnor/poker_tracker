@@ -1021,6 +1021,41 @@ with st.expander("Session Game Stats"):
 st.header("Admin")
 with st.expander("Admin Tools (Danger Zone)"):
 
+    st.write("### Download Data")
+
+    # ---- Raw Hands CSV ----
+    try:
+        raw_df = pd.DataFrame(hands)
+        raw_csv = raw_df.to_csv(index=False)
+
+        st.download_button(
+            label="Download Raw Hands CSV",
+            data=raw_csv,
+            file_name=f"{active_session['name']}_raw_hands.csv",
+            mime="text/csv",
+            key="download_raw_csv"
+        )
+    except Exception as e:
+        st.write("Could not generate raw hands CSV.")
+        print("Raw CSV error:", e)
+
+    # ---- Session Stats CSV ----
+    try:
+        stats_csv = leaderboard_df.to_csv(index=False)
+
+        st.download_button(
+            label="Download Session Stats CSV",
+            data=stats_csv,
+            file_name=f"{active_session['name']}_session_stats.csv",
+            mime="text/csv",
+            key="download_stats_csv"
+        )
+    except Exception as e:
+        st.write("Could not generate stats CSV.")
+        print("Stats CSV error:", e)
+
+    st.markdown("---")
+
     st.write("### Delete a Global Player")
 
     player_to_delete = st.selectbox(

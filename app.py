@@ -232,114 +232,110 @@ alive_players = [p for p in players_in_game if p not in eliminated_so_far]
 
 
 
-
 # ---------------------------------------------------------
 # 3. Log a Hand
 # ---------------------------------------------------------
-st.header("Log a Hand")
+with st.expander("Log a Hand", expanded=False):
 
-if not active_session:
-    st.info("Select or create a session to begin.")
-    st.stop()
+    if not active_session:
+        st.info("Select or create a session to begin.")
+        st.stop()
 
-if not alive_players:
-    st.info("All players have been eliminated.")
-    st.stop()
+    if not alive_players:
+        st.info("All players have been eliminated.")
+        st.stop()
 
-col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
-with col1:
-    st.subheader("Winner")
-    winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}")
+    with col1:
+        st.subheader("Winner")
+        winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}")
 
-with col2:
-    st.subheader("Street")
-    streets = ["Preflop", "Flop", "Turn", "River"]
-    street = st.radio("", streets, key=f"street_radio_{active_session['id']}")
+    with col2:
+        st.subheader("Street")
+        streets = ["Preflop", "Flop", "Turn", "River"]
+        street = st.radio("", streets, key=f"street_radio_{active_session['id']}")
 
-col3, col4 = st.columns(2)
+    col3, col4 = st.columns(2)
 
-with col3:
-    st.subheader("Hand Type")
+    with col3:
+        st.subheader("Hand Type")
 
-    # ⭐ Hand Type gating
-    if street != "River":
-        allowed_hand_types = ["No Showdown"]
-    else:
-        allowed_hand_types = [
-            "High Card", "Pair", "Two Pair", "Trips", "Straight",
-            "Flush", "Full House", "Quads", "Straight Flush"
-        ]
+        # Hand Type gating
+        if street != "River":
+            allowed_hand_types = ["No Showdown"]
+        else:
+            allowed_hand_types = [
+                "High Card", "Pair", "Two Pair", "Trips", "Straight",
+                "Flush", "Full House", "Quads", "Straight Flush"
+            ]
 
-    hand_type = st.radio(
-        "",
-        allowed_hand_types,
-        key=f"handtype_radio_{active_session['id']}"
-    )
+        hand_type = st.radio(
+            "",
+            allowed_hand_types,
+            key=f"handtype_radio_{active_session['id']}"
+        )
 
-with col4:
-    st.subheader("Pot Size")
-    pot_sizes = ["S", "M", "L"]
-    pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}")
+    with col4:
+        st.subheader("Pot Size")
+        pot_sizes = ["S", "M", "L"]
+        pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}")
 
-# ⭐ Showdown Losers only valid on River AND not No Showdown
-showdown_losers = []
-if street == "River" and hand_type != "No Showdown":
-    showdown_options = [p for p in alive_players if p != winner]
-    showdown_losers = checkbox_grid(
-        "Showdown Losers",
-        showdown_options,
-        key_prefix="losers",
-        session_id=active_session["id"],
-        columns=2
-    )
-
-# ⭐ ALL-IN only appears on River
-all_in = False
-eliminated_players = []
-
-if street == "River":
-    st.subheader("All-In")
-    all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}")
-
-    if all_in:
-        elim_options = [p for p in alive_players if p != winner]
-        eliminated_players = checkbox_grid(
-            "Eliminated Player(s)",
-            elim_options,
-            key_prefix="elim",
+    # Showdown Losers
+    showdown_losers = []
+    if street == "River" and hand_type != "No Showdown":
+        showdown_options = [p for p in alive_players if p != winner]
+        showdown_losers = checkbox_grid(
+            "Showdown Losers",
+            showdown_options,
+            key_prefix="losers",
             session_id=active_session["id"],
             columns=2
         )
 
-# ---------------------------------------------------------
-# Submit Hand (with validation)
-# ---------------------------------------------------------
-if st.button("Submit Hand", type="primary"):
+    # All-In only on River
+    all_in = False
+    eliminated_players = []
 
-    # ⭐ REQUIRE at least one showdown loser on River with real hand type
-    if street == "River" and hand_type != "No Showdown" and len(showdown_losers) == 0:
-        st.error("At least one showdown loser is required for a River showdown hand.")
-        st.stop()
+    if street == "River":
+        st.subheader("All-In")
+        all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}")
 
-    data = {
-        "hand_number": int(datetime.utcnow().timestamp()),
-        "winner": winner,
-        "street": street,
-        "hand_type": hand_type,
-        "pot_size": pot_size,
-        "all_in": all_in,
-        "eliminated_player": eliminated_players,
-        "showdown_losers": showdown_losers,
-        "players_in_game": players_in_game,
-        "game_name": active_session["name"],
-        "created_at": datetime.utcnow().isoformat(),
-    }
+        if all_in:
+            elim_options = [p for p in alive_players if p != winner]
+            eliminated_players = checkbox_grid(
+                "Eliminated Player(s)",
+                elim_options,
+                key_prefix="elim",
+                session_id=active_session["id"],
+                columns=2
+            )
 
-    supabase.table("hands").insert(data).execute()
-    st.success("Hand logged!")
-    st.rerun()
+    # Submit
+    if st.button("Submit Hand", type="primary"):
 
+        # Require showdown losers on River
+        if street == "River" and hand_type != "No Showdown" and len(showdown_losers) == 0:
+            st.error("At least one showdown loser is required for a River showdown hand.")
+            st.stop()
+
+        data = {
+            "hand_number": int(datetime.utcnow().timestamp()),
+            "winner": winner,
+            "street": street,
+            "hand_type": hand_type,
+            "pot_size": pot_size,
+            "all_in": all_in,
+            "eliminated_player": eliminated_players,
+            "showdown_losers": showdown_losers,
+            "players_in_game": players_in_game,
+            "game_name": active_session["name"],
+            "created_at": datetime.utcnow().isoformat(),
+        }
+
+        supabase.table("hands").insert(data).execute()
+        st.success("Hand logged!")
+        st.rerun()
 
 
 

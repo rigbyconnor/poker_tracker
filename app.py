@@ -855,5 +855,226 @@ with st.expander("Session Game Stats"):
                 categories=street_order,
                 ordered=True
             )
+            st.altair_chart(
+                alt.Chart(street_df_chart).mark_bar().encode(
+                    y=alt.Y("Street:N", sort=street_order),
+                    x=alt.X("Count:Q", axis=alt.Axis(tickMinStep=1))
+                ),
+                use_container_width=True
+            )
 
+        except Exception as e:
+            print("Error rendering street chart:", e)
+
+        # ---------------------------------------------------------
+        # Pot Size Distribution by Player (Wins Only)
+        # ---------------------------------------------------------
+        st.subheader("Pot Size Distribution by Player (Wins Only)")
+
+        pot_rows = []
+        try:
+            for p, s in player_stats.items():
+                S = s["pots_won_S"]
+                M = s["pots_won_M"]
+                L = s["pots_won_L"]
+                total = S + M + L
+
+                pot_rows.append({
+                    "Player": p,
+                    "S": S,
+                    "M": M,
+                    "L": L,
+                    "Total": total
+                })
+
+        except Exception as e:
+            print("Error building pot_rows:", e)
+
+        try:
+            pot_df = pd.DataFrame(pot_rows).sort_values(
+                by="Total", ascending=False
+            )
+            st.dataframe(pot_df, use_container_width=True)
+
+        except Exception as e:
+            print("Error rendering pot table:", e)
+            st.write("Pot size table unavailable.")
+
+        # ---------------------------------------------------------
+        # Awards (Hardened)
+        # ---------------------------------------------------------
+        st.subheader("Awards")
+
+        def get_clear_winner(key):
+            try:
+                values = [s[key] for s in player_stats.values()]
+                max_val = max(values)
+                if values.count(max_val) == 1 and max_val > 0:
+                    for p, s in player_stats.items():
+                        if s[key] == max_val:
+                            return p, max_val
+            except Exception as e:
+                print(f"Award error ({key}):", e)
+            return None, None
+
+        # Heater Award
+        try:
+            heater_p, heater_v = get_clear_winner("max_win_streak")
+            if heater_p:
+                st.write(f"🔥 **Heater Award:** {heater_p} peaked with a {heater_v}-hand win streak.")
+            else:
+                st.write("🔥 **Heater Award:**")
+        except Exception as e:
+            print("Error computing Heater Award:", e)
+
+        # Ice Cold Award
+        try:
+            cold_p, cold_v = get_clear_winner("max_loss_streak")
+            if cold_p:
+                st.write(f"❄️ **Ice Cold Award:** {cold_p} suffered a {cold_v}-hand losing streak.")
+            else:
+                st.write("❄️ **Ice Cold Award:**")
+        except Exception as e:
+            print("Error computing Ice Cold Award:", e)
+
+        # Fastest Bustout
+        try:
+            elim_order = []
+            for idx, h in enumerate(chronological, start=1):
+                eliminated = h.get("eliminated_player") or []
+                if isinstance(eliminated, str):
+                    eliminated = [eliminated]
+                for p in eliminated:
+                    elim_order.append((p, idx))
+
+            if elim_order:
+                fb_p, fb_h = elim_order[0]
+                st.write(f"💀 **Fastest Bustout:** {fb_p} was eliminated on Hand #{fb_h}.")
+            else:
+                st.write("💀 **Fastest Bustout:**")
+
+        except Exception as e:
+            print("Error computing Fastest Bustout:", e)
+
+        # Most Active
+        try:
+            active_p, active_v = get_clear_winner("showdown_participation")
+            if active_p:
+                st.write(f"📈 **Most Active Player:** {active_p} participated in {active_v} showdowns.")
+            else:
+                st.write("📈 **Most Active Player:**")
+        except Exception as e:
+            print("Error computing Most Active Award:", e)
+
+        # Most Passive
+        try:
+            passive_p, passive_v = get_clear_winner("folds")
+            if passive_p:
+                st.write(f"🪫 **Most Passive Player:** {passive_p} folded {passive_v} times.")
+            else:
+                st.write("🪫 **Most Passive Player:**")
+        except Exception as e:
+            print("Error computing Most Passive Award:", e)
+
+        # Aggression Award
+        try:
+            agg_p, agg_v = get_clear_winner("aggressive_wins")
+            if agg_p:
+                st.write(f"⚔️ **Aggression Award:** {agg_p} won {agg_v} pots before the river.")
+            else:
+                st.write("⚔️ **Aggression Award:**")
+        except Exception as e:
+            print("Error computing Aggression Award:", e)
+
+        # Most Dominant Player
+        try:
+            dom_candidates = [
+                (p, s) for p, s in player_stats.items()
+                if s["hands_played"] >= 5
+            ]
+
+            if dom_candidates:
+                win_rates = [(p, s["wins"] / s["hands_played"]) for p, s in dom_candidates]
+                max_rate = max(v for _, v in win_rates)
+
+                if sum(1 for _, v in win_rates if v == max_rate) == 1:
+                    dom_p = next(p for p, v in win_rates if v == max_rate)
+                    dom_pct = round(max_rate * 100)
+                    st.write(f"🏆 **Most Dominant Player:** {dom_p} leads with a {dom_pct}% win rate.")
+                else:
+                    st.write("🏆 **Most Dominant Player:**")
+            else:
+                st.write("🏆 **Most Dominant Player:**")
+
+        except Exception as e:
+            print("Error computing Dominant Player Award:", e)
+
+
+# ---------------------------------------------------------
+# 7. Admin Tools (Bottom of Page)
+# ---------------------------------------------------------
+with st.expander("Admin Tools (Danger Zone)"):
+
+    st.write("### Delete a Global Player")
+
+    player_to_delete = st.selectbox(
+        "Select player to delete:",
+        player_names,
+        key="delete_player_select"
+    )
+
+    if st.button("Delete Player", key="delete_player_btn"):
+        st.session_state["confirm_delete_player"] = player_to_delete
+
+    if st.session_state.get("confirm_delete_player") == player_to_delete:
+        st.warning(f"Are you sure you want to delete '{player_to_delete}' from the global list?")
+
+        c1, c2 = st.columns(2)
+
+        with c1:
+            if st.button("Yes, Delete Player", key="confirm_delete_player_yes"):
+                supabase.table("players").delete().eq("name", player_to_delete).execute()
+                st.success(f"Deleted player '{player_to_delete}'.")
+                st.session_state["confirm_delete_player"] = None
+                st.rerun()
+
+        with c2:
+            if st.button("Cancel", key="confirm_delete_player_no"):
+                st.session_state["confirm_delete_player"] = None
+
+    st.markdown("---")
+
+    st.write("### Delete an Entire Session")
+
+    session_to_delete = st.selectbox(
+        "Select session to delete:",
+        session_names,
+        key="delete_session_select"
+    )
+
+    if st.button("Delete Session", key="delete_session_btn"):
+        st.session_state["confirm_delete_session"] = session_to_delete
+
+    if st.session_state.get("confirm_delete_session") == session_to_delete:
+        st.warning(f"Delete session '{session_to_delete}' and ALL hands in it?")
+
+        c1, c2 = st.columns(2)
+
+        with c1:
+            if st.button("Yes, Delete Session", key="confirm_delete_session_yes"):
+                supabase.table("hands").delete().eq("game_name", session_to_delete).execute()
+                supabase.table("sessions").delete().eq("name", session_to_delete).execute()
+
+                st.success(f"Session '{session_to_delete}' deleted.")
+                st.session_state["confirm_delete_session"] = None
+                st.session_state["active_session_id"] = None
+                st.rerun()
+
+        with c2:
+            if st.button("Cancel", key="confirm_delete_session_no"):
+                st.session_state["confirm_delete_session"] = None
+
+# ============================
+# ===== END OF BLOCK 2 =======
+# ============================
            

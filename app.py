@@ -117,7 +117,7 @@ if "active_session_id" not in st.session_state:
 # ---------------------------------------------------------
 
 
-st.subheader("Game Session")
+st.subheader("Game Session 2")
 
 if st.session_state["active_session_id"]:
     active_session = next(

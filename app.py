@@ -117,7 +117,7 @@ if "active_session_id" not in st.session_state:
 # ---------------------------------------------------------
 
 
-st.subheader("Game Session 2")
+st.header("Game Session")
 
 if st.session_state["active_session_id"]:
     active_session = next(
@@ -129,7 +129,7 @@ else:
     default_name = None
 
 selected_session_name = st.selectbox(
-    "Game Session poop",
+    "Select or Create New Session",
     session_dropdown_options,
     index=session_dropdown_options.index(default_name)
     if default_name in session_dropdown_options else 0,

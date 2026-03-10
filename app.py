@@ -129,7 +129,7 @@ else:
     default_name = None
 
 selected_session_name = st.selectbox(
-    "Game Session",
+    "Game Session poop",
     session_dropdown_options,
     index=session_dropdown_options.index(default_name)
     if default_name in session_dropdown_options else 0,

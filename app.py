@@ -1165,7 +1165,7 @@ with st.expander("Session Game Stats"):
                 worst_p, worst_pct, worst_played, worst_wins = sd_sorted[-1]
                 if sum(1 for x in sd_sorted if x[1] == worst_pct) == 1:
                     st.write(
-                        f"🫣 **I Should Have Folded:** {worst_p} won only {worst_pct:.0f}% "
+                        f"🫣 **I Should Have Folded:** {worst_p} won {worst_pct:.0f}% of showdowns "
                         f"({worst_wins} wins in {worst_played} showdowns, min 5)."
                     )
                 else:

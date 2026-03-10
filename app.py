@@ -339,6 +339,176 @@ with st.expander("Log a Hand", expanded=False):
 # ===== START OF BLOCK 2 =====
 # ============================
 
+def build_player_hand_matrix(hands, players_in_game):
+    """
+    Build a full per-player-per-hand dataset with:
+    - all players represented for every hand
+    - kitchen-sink analytics
+    - 'N/A' for non-applicable fields
+    - cumulative metrics frozen after elimination
+    """
+
+    chronological = list(reversed(hands))  # oldest → newest
+    matrix_rows = []
+
+    # Track cumulative stats per player
+    cum = {
+        p: {
+            "wins": 0,
+            "folds": 0,
+            "showdown_wins": 0,
+            "elims": 0,
+            "win_streak": 0,
+            "loss_streak": 0,
+            "alive": True
+        }
+        for p in players_in_game
+    }
+
+    # Track timing
+    last_time = None
+    cumulative_session_seconds = 0
+
+    for idx, h in enumerate(chronological, start=1):
+
+        # Hand metadata
+        hand_id = h["id"]
+        winner = h["winner"]
+        street = h["street"]
+        hand_type = h["hand_type"]
+        pot_size = h["pot_size"]
+        all_in = h["all_in"]
+        eliminated = h.get("eliminated_player") or []
+        showdown_losers = h.get("showdown_losers") or []
+
+        if isinstance(eliminated, str):
+            eliminated = [eliminated]
+        if isinstance(showdown_losers, str):
+            showdown_losers = [showdown_losers]
+
+        # Alive players BEFORE this hand
+        alive_before = {p: cum[p]["alive"] for p in players_in_game}
+
+        # Timing
+        created_at = datetime.fromisoformat(h["created_at"])
+        if last_time is None:
+            time_since_last = 0
+        else:
+            time_since_last = (created_at - last_time).total_seconds()
+
+        cumulative_session_seconds += time_since_last
+        last_time = created_at
+
+        # Determine aggressive win
+        aggressive_win = (street != "River")
+
+        # Update cumulative stats for winner
+        if cum[winner]["alive"]:
+            cum[winner]["wins"] += 1
+            if aggressive_win:
+                # aggressive wins count as wins anyway
+                pass
+
+        # Showdown logic
+        is_showdown = (street == "River" and hand_type != "No Showdown")
+        if is_showdown:
+            if cum[winner]["alive"]:
+                cum[winner]["showdown_wins"] += 1
+
+        # Fold logic
+        for p in players_in_game:
+            if cum[p]["alive"]:
+                if (
+                    p != winner
+                    and p not in showdown_losers
+                    and p not in eliminated
+                ):
+                    cum[p]["folds"] += 1
+
+        # Eliminations
+        for p in eliminated:
+            if cum[p]["alive"]:
+                cum[p]["alive"] = False
+                cum[winner]["elims"] += 1
+
+        # Streak logic
+        for p in players_in_game:
+            if not cum[p]["alive"]:
+                # Freeze streaks after elimination
+                continue
+
+            if p == winner:
+                cum[p]["win_streak"] += 1
+                cum[p]["loss_streak"] = 0
+            else:
+                cum[p]["loss_streak"] += 1
+                cum[p]["win_streak"] = 0
+
+        # Alive AFTER this hand
+        alive_after = {p: cum[p]["alive"] for p in players_in_game}
+
+        # Build rows: one per player
+        for p in players_in_game:
+
+            if alive_before[p]:
+                folded = (
+                    p != winner
+                    and p not in showdown_losers
+                    and p not in eliminated
+                )
+                showdown_participation = (
+                    is_showdown and (p == winner or p in showdown_losers)
+                )
+                showdown_loser = (p in showdown_losers)
+                eliminated_flag = (p in eliminated)
+                aggressive_flag = (p == winner and aggressive_win)
+            else:
+                # Player was already eliminated → N/A fields
+                folded = "N/A"
+                showdown_participation = "N/A"
+                showdown_loser = "N/A"
+                eliminated_flag = "N/A"
+                aggressive_flag = "N/A"
+
+            matrix_rows.append({
+                "hand_id": hand_id,
+                "hand_number": idx,
+                "created_at": created_at,
+                "time_since_last_hand": time_since_last,
+                "cumulative_session_seconds": cumulative_session_seconds,
+
+                "player": p,
+                "alive_before": alive_before[p],
+                "alive_after": alive_after[p],
+
+                "winner": (p == winner) if alive_before[p] else "N/A",
+                "folded": folded,
+                "showdown_participation": showdown_participation,
+                "showdown_loser": showdown_loser,
+                "eliminated": eliminated_flag,
+                "aggressive_win": aggressive_flag,
+
+                "street": street,
+                "hand_type": hand_type,
+                "pot_size": pot_size,
+                "all_in": all_in,
+
+                # Cumulative stats (frozen after elimination)
+                "cumulative_wins": cum[p]["wins"],
+                "cumulative_folds": cum[p]["folds"],
+                "cumulative_showdown_wins": cum[p]["showdown_wins"],
+                "cumulative_eliminations": cum[p]["elims"],
+                "win_streak_after_hand": cum[p]["win_streak"],
+                "loss_streak_after_hand": cum[p]["loss_streak"],
+
+                # Context
+                "num_players_alive": sum(alive_before.values()),
+                "num_players_eliminated": sum(1 for x in alive_before.values() if not x),
+                "num_showdown_losers": len(showdown_losers),
+            })
+
+    return pd.DataFrame(matrix_rows)
+
 # ---------------------------------------------------------
 # 4. Session Data (Tap‑to‑Expand Actions)
 # ---------------------------------------------------------
@@ -1039,22 +1209,22 @@ with st.expander("Admin Tools (Danger Zone)"):
         st.write("Could not generate raw hands CSV.")
         print("Raw CSV error:", e)
 
-    # ---- Session Stats CSV ----
+    st.write("### Download Player-Hand Matrix")
+
     try:
-        stats_csv = leaderboard_df.to_csv(index=False)
+        matrix_df = build_player_hand_matrix(hands, players_in_game)
+        matrix_csv = matrix_df.to_csv(index=False)
 
         st.download_button(
-            label="Download Session Stats CSV",
-            data=stats_csv,
-            file_name=f"{active_session['name']}_session_stats.csv",
+            label="Download Player-Hand Matrix CSV",
+            data=matrix_csv,
+            file_name=f"{active_session['name']}_player_hand_matrix.csv",
             mime="text/csv",
-            key="download_stats_csv"
+            key="download_matrix_csv"
         )
     except Exception as e:
-        st.write("Could not generate stats CSV.")
-        print("Stats CSV error:", e)
-
-    st.markdown("---")
+        st.write("Could not generate player-hand matrix CSV.")
+        print("Matrix CSV error:", e)
 
     st.write("### Delete a Global Player")
 

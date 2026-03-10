@@ -10,7 +10,7 @@ import json
 import pandas as pd
 
 # ---------------------------------------------------------
-# Supabase connection
+# Supabase Connection
 # ---------------------------------------------------------
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_SERVICE_KEY = st.secrets["SUPABASE_SERVICE_KEY"]
@@ -20,7 +20,7 @@ st.set_page_config(page_title="Poker Night Tracker", layout="centered")
 
 
 # ---------------------------------------------------------
-# Helpers
+# Helper Functions
 # ---------------------------------------------------------
 def load_players():
     response = supabase.table("players").select("*").order("name").execute()
@@ -66,7 +66,7 @@ def load_hands_for_session(session_name):
 
 
 # ---------------------------------------------------------
-# Checkbox grid helper
+# Checkbox Grid Helper
 # ---------------------------------------------------------
 def checkbox_grid(label, options, key_prefix, session_id, columns=2, prechecked=None):
     st.write(f"### {label}")
@@ -93,7 +93,7 @@ def checkbox_grid(label, options, key_prefix, session_id, columns=2, prechecked=
 
 
 # ---------------------------------------------------------
-# Load base data
+# Load Base Data
 # ---------------------------------------------------------
 players = load_players()
 player_names = [p["name"] for p in players]
@@ -106,7 +106,7 @@ session_dropdown_options = session_names + [CREATE_NEW]
 
 
 # ---------------------------------------------------------
-# Remember last session
+# Remember Last Session
 # ---------------------------------------------------------
 if "active_session_id" not in st.session_state:
     st.session_state["active_session_id"] = None
@@ -143,6 +143,7 @@ selected_session_name = st.selectbox(
 # Create New Session Flow
 # ---------------------------------------------------------
 if selected_session_name == CREATE_NEW:
+
     st.subheader("Create New Session")
 
     suggested_name = f"{datetime.now():%B %Y} Poker Night"
@@ -164,7 +165,7 @@ if selected_session_name == CREATE_NEW:
 
 
 # ---------------------------------------------------------
-# Load selected session
+# Load Selected Session
 # ---------------------------------------------------------
 active_session = next((s for s in sessions if s["name"] == selected_session_name), None)
 
@@ -231,7 +232,6 @@ for h in chronological:
 alive_players = [p for p in players_in_game if p not in eliminated_so_far]
 
 
-
 # ---------------------------------------------------------
 # 3. Log a Hand
 # ---------------------------------------------------------
@@ -261,7 +261,6 @@ with st.expander("Log a Hand", expanded=False):
     with col3:
         st.subheader("Hand Type")
 
-        # Hand Type gating
         if street != "River":
             allowed_hand_types = ["No Showdown"]
         else:
@@ -281,7 +280,6 @@ with st.expander("Log a Hand", expanded=False):
         pot_sizes = ["S", "M", "L"]
         pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}")
 
-    # Showdown Losers
     showdown_losers = []
     if street == "River" and hand_type != "No Showdown":
         showdown_options = [p for p in alive_players if p != winner]
@@ -293,7 +291,6 @@ with st.expander("Log a Hand", expanded=False):
             columns=2
         )
 
-    # All-In only on River
     all_in = False
     eliminated_players = []
 
@@ -311,10 +308,8 @@ with st.expander("Log a Hand", expanded=False):
                 columns=2
             )
 
-    # Submit
     if st.button("Submit Hand", type="primary"):
 
-        # Require showdown losers on River
         if street == "River" and hand_type != "No Showdown" and len(showdown_losers) == 0:
             st.error("At least one showdown loser is required for a River showdown hand.")
             st.stop()
@@ -337,8 +332,6 @@ with st.expander("Log a Hand", expanded=False):
         st.success("Hand logged!")
         st.rerun()
 
-
-
 # ============================
 # ===== END OF BLOCK 1 =======
 # ============================
@@ -348,7 +341,6 @@ with st.expander("Log a Hand", expanded=False):
 # ======== BLOCK 2 ===========
 # ===== START OF BLOCK 2 =====
 # ============================
-
 
 # ---------------------------------------------------------
 # 4. Hand History (Tap‑to‑Expand Actions)
@@ -369,9 +361,11 @@ with st.expander("Show Full Hand History", expanded=False):
         for h in chronological:
             if h["id"] == target_hand_id:
                 break
+
             eliminated = h.get("eliminated_player") or []
             if isinstance(eliminated, str):
                 eliminated = [eliminated]
+
             for p in eliminated:
                 eliminated_before.add(p)
 
@@ -381,6 +375,7 @@ with st.expander("Show Full Hand History", expanded=False):
     # Render a single hand (tap‑to‑expand)
     # ---------------------------------------------------------
     def render_hand(h, hand_number):
+
         winner = h["winner"]
         street = h["street"]
         hand_type = h["hand_type"]
@@ -413,6 +408,7 @@ with st.expander("Show Full Hand History", expanded=False):
 
         # Expanded actions
         if st.session_state.get("open_hand") == h["id"]:
+
             with st.expander(f"Actions for Hand #{hand_number}", expanded=True):
 
                 # Delete
@@ -421,7 +417,9 @@ with st.expander("Show Full Hand History", expanded=False):
 
                 if st.session_state.get("confirm_delete") == h["id"]:
                     st.warning("Are you sure you want to delete this hand?")
+
                     c1, c2 = st.columns(2)
+
                     with c1:
                         if st.button("Yes, Delete", key=f"yes_delete_{h['id']}"):
                             supabase.table("hands").delete().eq("id", h["id"]).execute()
@@ -429,6 +427,7 @@ with st.expander("Show Full Hand History", expanded=False):
                             st.session_state["confirm_delete"] = None
                             st.session_state["open_hand"] = None
                             st.rerun()
+
                     with c2:
                         if st.button("Cancel", key=f"cancel_delete_{h['id']}"):
                             st.session_state["confirm_delete"] = None
@@ -439,6 +438,7 @@ with st.expander("Show Full Hand History", expanded=False):
 
                 # Edit form
                 if st.session_state.get("editing_hand") == h["id"]:
+
                     with st.expander(f"Editing Hand #{hand_number}", expanded=True):
 
                         alive_at_time = get_alive_players_at_hand(h["id"])
@@ -460,7 +460,7 @@ with st.expander("Show Full Hand History", expanded=False):
 
                         hand_types = [
                             "High Card", "Pair", "Two Pair", "Trips", "Straight",
-                            "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
+                            "Flush", "Full House",                            "Quads", "Straight Flush", "No Showdown"
                         ]
                         new_hand_type = st.radio(
                             "Hand Type",
@@ -515,7 +515,9 @@ with st.expander("Show Full Hand History", expanded=False):
                                 "showdown_losers": new_showdown_losers,
                                 "eliminated_player": new_eliminated,
                             }
+
                             supabase.table("hands").update(updated).eq("id", h["id"]).execute()
+
                             st.success("Hand updated.")
                             st.session_state["editing_hand"] = None
                             st.session_state["open_hand"] = None
@@ -527,8 +529,6 @@ with st.expander("Show Full Hand History", expanded=False):
         render_hand(h, hand_number)
 
 
-
-
 # ---------------------------------------------------------
 # 6. Session Game Stats (Hardened + Sortable Tables)
 # ---------------------------------------------------------
@@ -536,6 +536,7 @@ with st.expander("Session Game Stats"):
 
     if len(hands) < 2:
         st.info("Not enough hands logged to compute game stats yet.")
+
     else:
         import altair as alt
 
@@ -574,7 +575,7 @@ with st.expander("Session Game Stats"):
         # ---------------------------------------------------------
         try:
             times = [datetime.fromisoformat(h["created_at"]) for h in chronological]
-            deltas = [(times[i+1] - times[i]).total_seconds() for i in range(len(times)-1)]
+            deltas = [(times[i + 1] - times[i]).total_seconds() for i in range(len(times) - 1)]
             avg_hand_time = sum(deltas) / len(deltas)
             avg_hand_time_str = f"{round(avg_hand_time)} sec"
         except Exception as e:
@@ -586,13 +587,15 @@ with st.expander("Session Game Stats"):
         # ---------------------------------------------------------
         for idx, h in enumerate(chronological, start=1):
             try:
-                # Validate players_in_game
                 players_list = h.get("players_in_game")
                 if not isinstance(players_list, list):
                     print(f"Skipping hand #{idx}: players_in_game invalid")
                     continue
 
-                alive_players = [p for p in players_list if p in player_stats and player_stats[p]["alive"]]
+                alive_players = [
+                    p for p in players_list
+                    if p in player_stats and player_stats[p]["alive"]
+                ]
 
                 # Hands played
                 for p in alive_players:
@@ -604,7 +607,6 @@ with st.expander("Session Game Stats"):
                     print(f"Skipping hand #{idx}: invalid winner {winner}")
                     continue
 
-                # Wins
                 if player_stats[winner]["alive"]:
                     player_stats[winner]["wins"] += 1
 
@@ -729,8 +731,10 @@ with st.expander("Session Game Stats"):
         st.subheader("Session Leaderboard")
 
         leaderboard_rows = []
+
         try:
             for p, s in player_stats.items():
+
                 played = s["hands_played"]
                 wins = s["wins"]
                 folds = s["folds"]
@@ -756,6 +760,7 @@ with st.expander("Session Game Stats"):
                     "KOs": s["elim_wins"],
                     "Busted On": busted_display
                 })
+
         except Exception as e:
             print("Error building leaderboard_rows:", e)
 
@@ -772,15 +777,22 @@ with st.expander("Session Game Stats"):
         # Charts (Hardened)
         # ---------------------------------------------------------
         st.subheader("Pot Size Distribution")
+
         try:
             pot_sizes = [h.get("pot_size") for h in chronological]
             pot_counts = pd.Series(pot_sizes).value_counts()
             pot_order = ["S", "M", "L"]
+
             pot_df_chart = pd.DataFrame({
                 "Pot Size": pot_order,
                 "Count": [pot_counts.get(x, 0) for x in pot_order]
             })
-            pot_df_chart["Pot Size"] = pd.Categorical(pot_df_chart["Pot Size"], categories=pot_order, ordered=True)
+
+            pot_df_chart["Pot Size"] = pd.Categorical(
+                pot_df_chart["Pot Size"],
+                categories=pot_order,
+                ordered=True
+            )
 
             st.altair_chart(
                 alt.Chart(pot_df_chart).mark_bar().encode(
@@ -789,22 +801,31 @@ with st.expander("Session Game Stats"):
                 ),
                 use_container_width=True
             )
+
         except Exception as e:
             print("Error rendering pot size chart:", e)
 
         st.subheader("Winning Hand Type Distribution")
+
         try:
             hand_order = [
                 "High Card", "Pair", "Two Pair", "Trips", "Straight",
                 "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
             ]
+
             hand_types = [h.get("hand_type") for h in chronological]
             hand_counts = pd.Series(hand_types).value_counts()
+
             hand_df_chart = pd.DataFrame({
                 "Hand Type": hand_order,
                 "Count": [hand_counts.get(x, 0) for x in hand_order]
             })
-            hand_df_chart["Hand Type"] = pd.Categorical(hand_df_chart["Hand Type"], categories=hand_order, ordered=True)
+
+            hand_df_chart["Hand Type"] = pd.Categorical(
+                hand_df_chart["Hand Type"],
+                categories=hand_order,
+                ordered=True
+            )
 
             st.altair_chart(
                 alt.Chart(hand_df_chart).mark_bar().encode(
@@ -813,223 +834,26 @@ with st.expander("Session Game Stats"):
                 ),
                 use_container_width=True
             )
+
         except Exception as e:
             print("Error rendering hand type chart:", e)
 
         st.subheader("Street End Distribution")
+
         try:
             street_order = ["Preflop", "Flop", "Turn", "River"]
             streets = [h.get("street") for h in chronological]
             street_counts = pd.Series(streets).value_counts()
+
             street_df_chart = pd.DataFrame({
                 "Street": street_order,
                 "Count": [street_counts.get(x, 0) for x in street_order]
             })
-            street_df_chart["Street"] = pd.Categorical(street_df_chart["Street"], categories=street_order, ordered=True)
 
-            st.altair_chart(
-                alt.Chart(street_df_chart).mark_bar().encode(
-                    y=alt.Y("Street:N", sort=street_order),
-                    x=alt.X("Count:Q", axis=alt.Axis(tickMinStep=1))
-                ),
-                use_container_width=True
+            street_df_chart["Street"] = pd.Categorical(
+                street_df_chart["Street"],
+                categories=street_order,
+                ordered=True
             )
-        except Exception as e:
-            print("Error rendering street chart:", e)
 
-        # ---------------------------------------------------------
-        # Pot Size Distribution by Player (Sortable + Hardened)
-        # ---------------------------------------------------------
-        st.subheader("Pot Size Distribution by Player (Wins Only)")
-
-        pot_rows = []
-        try:
-            for p, s in player_stats.items():
-                S = s["pots_won_S"]
-                M = s["pots_won_M"]
-                L = s["pots_won_L"]
-                total = S + M + L
-
-                pot_rows.append({
-                    "Player": p,
-                    "S": S,
-                    "M": M,
-                    "L": L,
-                    "Total": total
-                })
-        except Exception as e:
-            print("Error building pot_rows:", e)
-
-        try:
-            pot_df = pd.DataFrame(pot_rows).sort_values(
-                by="Total", ascending=False
-            )
-            st.dataframe(pot_df, use_container_width=True)
-        except Exception as e:
-            print("Error rendering pot table:", e)
-            st.write("Pot size table unavailable.")
-
-        # ---------------------------------------------------------
-        # Awards (Hardened)
-        # ---------------------------------------------------------
-        st.subheader("Awards")
-
-        def get_clear_winner(key):
-            try:
-                values = [s[key] for s in player_stats.values()]
-                max_val = max(values)
-                if values.count(max_val) == 1 and max_val > 0:
-                    for p, s in player_stats.items():
-                        if s[key] == max_val:
-                            return p, max_val
-            except Exception as e:
-                print(f"Award error ({key}):", e)
-            return None, None
-
-        # Heater Award
-        try:
-            heater_p, heater_v = get_clear_winner("max_win_streak")
-            if heater_p:
-                st.write(f"🔥 **Heater Award:** {heater_p} peaked with a {heater_v}-hand win streak.")
-            else:
-                st.write("🔥 **Heater Award:**")
-        except Exception as e:
-            print("Error computing Heater Award:", e)
-
-        # Ice Cold Award
-        try:
-            cold_p, cold_v = get_clear_winner("max_loss_streak")
-            if cold_p:
-                st.write(f"❄️ **Ice Cold Award:** {cold_p} suffered a {cold_v}-hand losing streak.")
-            else:
-                st.write("❄️ **Ice Cold Award:**")
-        except Exception as e:
-            print("Error computing Ice Cold Award:", e)
-
-        # Fastest Bustout
-        try:
-            elim_order = []
-            for idx, h in enumerate(chronological, start=1):
-                eliminated = h.get("eliminated_player") or []
-                if isinstance(eliminated, str):
-                    eliminated = [eliminated]
-                for p in eliminated:
-                    elim_order.append((p, idx))
-
-            if elim_order:
-                fb_p, fb_h = elim_order[0]
-                st.write(f"💀 **Fastest Bustout:** {fb_p} was eliminated on Hand #{fb_h}.")
-            else:
-                st.write("💀 **Fastest Bustout:**")
-        except Exception as e:
-            print("Error computing Fastest Bustout:", e)
-
-        # Most Active
-        try:
-            active_p, active_v = get_clear_winner("showdown_participation")
-            if active_p:
-                st.write(f"📈 **Most Active Player:** {active_p} participated in {active_v} showdowns.")
-            else:
-                st.write("📈 **Most Active Player:**")
-        except Exception as e:
-            print("Error computing Most Active Award:", e)
-
-        # Most Passive
-        try:
-            passive_p, passive_v = get_clear_winner("folds")
-            if passive_p:
-                st.write(f"🪫 **Most Passive Player:** {passive_p} folded {passive_v} times.")
-            else:
-                st.write("🪫 **Most Passive Player:**")
-        except Exception as e:
-            print("Error computing Most Passive Award:", e)
-
-        # Aggression Award
-        try:
-            agg_p, agg_v = get_clear_winner("aggressive_wins")
-            if agg_p:
-                st.write(f"⚔️ **Aggression Award:** {agg_p} won {agg_v} pots before the river.")
-            else:
-                st.write("⚔️ **Aggression Award:**")
-        except Exception as e:
-            print("Error computing Aggression Award:", e)
-
-        # Most Dominant Player
-        try:
-            dom_candidates = [(p, s) for p, s in player_stats.items() if s["hands_played"] >= 5]
-            if dom_candidates:
-                win_rates = [(p, s["wins"] / s["hands_played"]) for p, s in dom_candidates]
-                max_rate = max(v for _, v in win_rates)
-                if sum(1 for _, v in win_rates if v == max_rate) == 1:
-                    dom_p = next(p for p, v in win_rates if v == max_rate)
-                    dom_pct = round(max_rate * 100)
-                    st.write(f"🏆 **Most Dominant Player:** {dom_p} leads with a {dom_pct}% win rate.")
-                else:
-                    st.write("🏆 **Most Dominant Player:**")
-            else:
-                st.write("🏆 **Most Dominant Player:**")
-        except Exception as e:
-            print("Error computing Dominant Player Award:", e)
-
-
-
-
-# ---------------------------------------------------------
-# 7. Admin Tools (Bottom of Page)
-# ---------------------------------------------------------
-with st.expander("Admin Tools (Danger Zone)"):
-
-    st.write("### Delete a Global Player")
-    player_to_delete = st.selectbox(
-        "Select player to delete:",
-        player_names,
-        key="delete_player_select"
-    )
-
-    if st.button("Delete Player", key="delete_player_btn"):
-        st.session_state["confirm_delete_player"] = player_to_delete
-
-    if st.session_state.get("confirm_delete_player") == player_to_delete:
-        st.warning(f"Are you sure you want to delete '{player_to_delete}' from the global list?")
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("Yes, Delete Player", key="confirm_delete_player_yes"):
-                supabase.table("players").delete().eq("name", player_to_delete).execute()
-                st.success(f"Deleted player '{player_to_delete}'.")
-                st.session_state["confirm_delete_player"] = None
-                st.rerun()
-        with c2:
-            if st.button("Cancel", key="confirm_delete_player_no"):
-                st.session_state["confirm_delete_player"] = None
-
-    st.markdown("---")
-
-    st.write("### Delete an Entire Session")
-    session_to_delete = st.selectbox(
-        "Select session to delete:",
-        session_names,
-        key="delete_session_select"
-    )
-
-    if st.button("Delete Session", key="delete_session_btn"):
-        st.session_state["confirm_delete_session"] = session_to_delete
-
-    if st.session_state.get("confirm_delete_session") == session_to_delete:
-        st.warning(f"Delete session '{session_to_delete}' and ALL hands in it?")
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("Yes, Delete Session", key="confirm_delete_session_yes"):
-                supabase.table("hands").delete().eq("game_name", session_to_delete).execute()
-                supabase.table("sessions").delete().eq("name", session_to_delete).execute()
-
-                st.success(f"Session '{session_to_delete}' deleted.")
-                st.session_state["confirm_delete_session"] = None
-                st.session_state["active_session_id"] = None
-                st.rerun()
-        with c2:
-            if st.button("Cancel", key="confirm_delete_session_no"):
-                st.session_state["confirm_delete_session"] = None
-
-# ============================
-# ===== END OF BLOCK 2 =======
-# ============================
+           

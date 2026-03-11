@@ -823,11 +823,20 @@ with st.expander("Session Game Stats"):
             st.write("Leaderboard unavailable.")
 
 
-
         # ---------------------------------------------------------
         # Build Player-Hand Matrix (for trendlines + advanced stats)
         # ---------------------------------------------------------
         matrix_df = build_player_hand_matrix(hands, players_in_game)
+
+        # ---------------------------------------------------------
+        # Patch player_stats with Ice-Cold metric
+        # ---------------------------------------------------------
+        for p in players_in_game:
+            try:
+                max_drought = matrix_df[matrix_df["player"] == p]["max_hands_since_last_win"].max()
+                player_stats[p]["max_hands_since_last_win"] = int(max_drought)
+            except:
+                player_stats[p]["max_hands_since_last_win"] = 0
 
         # ---------------------------------------------------------
         # Win Progression Trendline

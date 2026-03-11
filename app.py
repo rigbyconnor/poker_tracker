@@ -840,9 +840,10 @@ with st.expander("Session Game Stats"):
 
 
         # ---------------------------------------------------------
-        # Pot Value Momentum Trendline (Chip Proxy)
+        # Chip Stack Proxy Trendline (Chip Proxy)
         # ---------------------------------------------------------
-        st.write("### Pot Value Momentum Trendline")
+        st.write("### Chip Stack Proxy Trendline")
+        st.caption("Pot Size Values: S = 1 • M = 2 • L = 3")
 
         try:
             # Filter out eliminated players' frozen rows
@@ -853,7 +854,7 @@ with st.expander("Session Game Stats"):
                 .mark_line(point=True)
                 .encode(
                     x=alt.X("hand_number:Q", title="Hand Number"),
-                    y=alt.Y("cumulative_pot_value:Q", title="Cumulative Pot Value"),
+                    y=alt.Y("cumulative_pot_value:Q", title="Cumulative Stack Value"),
                     color=alt.Color("player:N", title="Player"),
                     tooltip=[
                         "player",
@@ -870,8 +871,8 @@ with st.expander("Session Game Stats"):
             st.altair_chart(pot_chart, use_container_width=True)
 
         except Exception as e:
-            st.write("Could not generate pot value trendline.")
-            print("Pot value trendline error:", e)
+            st.write("Could not generate Chip Stack Proxy Trendline.")
+            print("Chip Stack Proxy trendline error:", e)
 
 
 

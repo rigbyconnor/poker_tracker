@@ -950,6 +950,48 @@ with st.expander("Session Game Stats"):
             print("Error rendering leaderboard table:", e)
             st.write("Leaderboard unavailable.")
 
+
+
+
+                # ---------------------------------------------------------
+        # Build Player-Hand Matrix (for trendline + advanced stats)
+        # ---------------------------------------------------------
+        matrix_df = build_player_hand_matrix(hands, players_in_game)
+
+        # ---------------------------------------------------------
+        # Win Progression Trendline
+        # ---------------------------------------------------------
+        st.write("### Win Progression Trendline")
+
+        try:
+            # Remove eliminated-player placeholder rows for the chart
+            trend_df = matrix_df[matrix_df["winner"] != "N/A"]
+
+            chart = (
+                alt.Chart(trend_df)
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X("hand_number:Q", title="Hand Number"),
+                    y=alt.Y("cumulative_wins:Q", title="Cumulative Wins"),
+                    color=alt.Color("player:N", title="Player"),
+                    tooltip=[
+                        "player",
+                        "hand_number",
+                        "cumulative_wins",
+                        "winner",
+                    ],
+                )
+                .properties(height=300)
+            )
+
+            st.altair_chart(chart, use_container_width=True)
+
+        except Exception as e:
+            st.write("Could not generate win progression chart.")
+            print("Trendline error:", e)
+
+            
+
         # ---------------------------------------------------------
         # Charts (Hardened)
         # ---------------------------------------------------------

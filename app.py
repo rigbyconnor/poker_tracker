@@ -340,9 +340,8 @@ with st.expander("Log a Hand", expanded=False):
 # ============================
 
 #=============================
-#Player Matrix DataFrame
+# Player Matrix DataFrame
 #=============================
-
 
 def build_player_hand_matrix(hands, players_in_game):
     """
@@ -369,7 +368,11 @@ def build_player_hand_matrix(hands, players_in_game):
             "win_streak": 0,
             "loss_streak": 0,
             "alive": True,
-            "cumulative_pot_value": 0,   # NEW
+            "cumulative_pot_value": 0,
+
+            # NEW Ice-Cold metrics
+            "hands_since_last_win": 0,
+            "max_hands_since_last_win": 0,
         }
         for p in players_in_game
     }
@@ -436,11 +439,14 @@ def build_player_hand_matrix(hands, players_in_game):
                 cum[p]["alive"] = False
                 cum[winner]["elims"] += 1
 
-        # Streak logic
+        # ---------------------------------------------------------
+        # Streak logic (win/loss streaks + NEW ice-cold logic)
+        # ---------------------------------------------------------
         for p in players_in_game:
             if not cum[p]["alive"]:
                 continue
 
+            # Win/loss streaks
             if p == winner:
                 cum[p]["win_streak"] += 1
                 cum[p]["loss_streak"] = 0
@@ -448,13 +454,27 @@ def build_player_hand_matrix(hands, players_in_game):
                 cum[p]["loss_streak"] += 1
                 cum[p]["win_streak"] = 0
 
+            # NEW: Ice-Cold metric (hands since last win)
+            if p == winner:
+                cum[p]["hands_since_last_win"] = 0
+            else:
+                cum[p]["hands_since_last_win"] += 1
+
+            # Track max drought
+            cum[p]["max_hands_since_last_win"] = max(
+                cum[p]["max_hands_since_last_win"],
+                cum[p]["hands_since_last_win"]
+            )
+
         # Alive AFTER this hand
         alive_after = {p: cum[p]["alive"] for p in players_in_game}
 
         # Determine pot value for this hand
         pot_val = pot_value_map.get(pot_size, 0)
 
+        # ---------------------------------------------------------
         # Build rows: one per player
+        # ---------------------------------------------------------
         for p in players_in_game:
 
             if alive_before[p]:
@@ -476,9 +496,7 @@ def build_player_hand_matrix(hands, players_in_game):
                 eliminated_flag = "N/A"
                 aggressive_flag = "N/A"
 
-            # -----------------------------
-            # NEW: Pot value change logic
-            # -----------------------------
+            # Pot momentum logic
             if alive_before[p]:
                 if p == winner:
                     pot_change = pot_val
@@ -489,7 +507,6 @@ def build_player_hand_matrix(hands, players_in_game):
             else:
                 pot_change = "N/A"
 
-            # Update cumulative pot value (freeze after elimination)
             if isinstance(pot_change, int):
                 cum[p]["cumulative_pot_value"] += pot_change
 
@@ -516,7 +533,7 @@ def build_player_hand_matrix(hands, players_in_game):
                 "pot_size": pot_size,
                 "all_in": all_in,
 
-                # Cumulative stats (frozen after elimination)
+                # Cumulative stats
                 "cumulative_wins": cum[p]["wins"],
                 "cumulative_folds": cum[p]["folds"],
                 "cumulative_showdown_wins": cum[p]["showdown_wins"],
@@ -524,7 +541,11 @@ def build_player_hand_matrix(hands, players_in_game):
                 "win_streak_after_hand": cum[p]["win_streak"],
                 "loss_streak_after_hand": cum[p]["loss_streak"],
 
-                # NEW: Pot momentum fields
+                # NEW: Ice-Cold metrics
+                "hands_since_last_win": cum[p]["hands_since_last_win"],
+                "max_hands_since_last_win": cum[p]["max_hands_since_last_win"],
+
+                # Pot momentum fields
                 "pot_value_change": pot_change,
                 "cumulative_pot_value": cum[p]["cumulative_pot_value"],
 
@@ -535,8 +556,9 @@ def build_player_hand_matrix(hands, players_in_game):
             })
 
     return pd.DataFrame(matrix_rows)
+
 #=============================
-#Player Matrix DataFrame End
+# Player Matrix DataFrame End
 #=============================
 
 
@@ -1031,11 +1053,11 @@ with st.expander("Session Game Stats"):
         except Exception as e:
             print("Error computing Heater Award:", e)
 
-        # Ice Cold Award
+        # Ice Cold Award (Longest drought without a win)
         try:
-            cold_p, cold_v = get_clear_winner("max_loss_streak")
+            cold_p, cold_v = get_clear_winner("max_hands_since_last_win")
             if cold_p:
-                st.write(f"❄️ **Ice Cold Award:** {cold_p} suffered a {cold_v}-hand losing streak.")
+                st.write(f"❄️ **Ice Cold Award:** {cold_p} went {cold_v} consective hands without a win.")
             else:
                 st.write("❄️ **Ice Cold Award:**")
         except Exception as e:

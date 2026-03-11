@@ -1344,14 +1344,17 @@ with st.expander("Hand History", expanded=False):
         render_hand(h, hand_number)
 
 
-
 # ---------------------------------------------------------
 # 7. Admin Tools (Bottom of Page)
 # ---------------------------------------------------------
 
 st.header("Admin")
+
 with st.expander("Admin Tools (Danger Zone)"):
 
+    # ---------------------------------------------------------
+    # Download Data
+    # ---------------------------------------------------------
     st.write("### Download Data")
 
     # ---- Raw Hands CSV ----
@@ -1387,92 +1390,86 @@ with st.expander("Admin Tools (Danger Zone)"):
         st.write("Could not generate player-hand matrix CSV.")
         print("Matrix CSV error:", e)
 
-
-    st.markdown("---")
-
-
-#==============================
-#Deleting Players / Sessions
-#==============================
-
-# ---------------------------------------------------------
-# Admin Password Gate
-# ---------------------------------------------------------
-ADMIN_PASSWORD = "poker123"
-
-st.write("### Admin Password Required")
-admin_pw = st.text_input("Enter admin password", type="password")
-
-if admin_pw == ADMIN_PASSWORD:
-    st.success("Admin mode unlocked.")
-
-    # ---------------------------------------------------------
-    # Delete a Global Player
-    # ---------------------------------------------------------
-    st.write("### Delete a Global Player")
-
-    player_to_delete = st.selectbox(
-        "Select player to delete:",
-        player_names,
-        key="delete_player_select"
-    )
-
-    if st.button("Delete Player", key="delete_player_btn"):
-        st.session_state["confirm_delete_player"] = player_to_delete
-
-    if st.session_state.get("confirm_delete_player") == player_to_delete:
-        st.warning(f"Are you sure you want to delete '{player_to_delete}' from the global list?")
-
-        c1, c2 = st.columns(2)
-
-        with c1:
-            if st.button("Yes, Delete Player", key="confirm_delete_player_yes"):
-                supabase.table("players").delete().eq("name", player_to_delete).execute()
-                st.success(f"Deleted player '{player_to_delete}'.")
-                st.session_state["confirm_delete_player"] = None
-                st.rerun()
-
-        with c2:
-            if st.button("Cancel", key="confirm_delete_player_no"):
-                st.session_state["confirm_delete_player"] = None
-
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # Delete an Entire Session
+    # Admin Password Gate (INSIDE the expander)
     # ---------------------------------------------------------
-    st.write("### Delete an Entire Session")
+    ADMIN_PASSWORD = "poker123"
 
-    session_to_delete = st.selectbox(
-        "Select session to delete:",
-        session_names,
-        key="delete_session_select"
-    )
+    st.write("### Admin Password Required")
+    admin_pw = st.text_input("Enter admin password", type="password")
 
-    if st.button("Delete Session", key="delete_session_btn"):
-        st.session_state["confirm_delete_session"] = session_to_delete
+    if admin_pw == ADMIN_PASSWORD:
+        st.success("Admin mode unlocked.")
 
-    if st.session_state.get("confirm_delete_session") == session_to_delete:
-        st.warning(f"Delete session '{session_to_delete}' and ALL hands in it?")
+        # ---------------------------------------------------------
+        # Delete a Global Player
+        # ---------------------------------------------------------
+        st.write("### Delete a Global Player")
 
-        c1, c2 = st.columns(2)
+        player_to_delete = st.selectbox(
+            "Select player to delete:",
+            player_names,
+            key="delete_player_select"
+        )
 
-        with c1:
-            if st.button("Yes, Delete Session", key="confirm_delete_session_yes"):
-                supabase.table("hands").delete().eq("game_name", session_to_delete).execute()
-                supabase.table("sessions").delete().eq("name", session_to_delete).execute()
+        if st.button("Delete Player", key="delete_player_btn"):
+            st.session_state["confirm_delete_player"] = player_to_delete
 
-                st.success(f"Session '{session_to_delete}' deleted.")
-                st.session_state["confirm_delete_session"] = None
-                st.session_state["active_session_id"] = None
-                st.rerun()
+        if st.session_state.get("confirm_delete_player") == player_to_delete:
+            st.warning(f"Are you sure you want to delete '{player_to_delete}' from the global list?")
 
-        with c2:
-            if st.button("Cancel", key="confirm_delete_session_no"):
-                st.session_state["confirm_delete_session"] = None
+            c1, c2 = st.columns(2)
 
-else:
-    st.info("Enter the admin password to access delete tools.")
+            with c1:
+                if st.button("Yes, Delete Player", key="confirm_delete_player_yes"):
+                    supabase.table("players").delete().eq("name", player_to_delete).execute()
+                    st.success(f"Deleted player '{player_to_delete}'.")
+                    st.session_state["confirm_delete_player"] = None
+                    st.rerun()
+
+            with c2:
+                if st.button("Cancel", key="confirm_delete_player_no"):
+                    st.session_state["confirm_delete_player"] = None
+
+        st.markdown("---")
+
+        # ---------------------------------------------------------
+        # Delete an Entire Session
+        # ---------------------------------------------------------
+        st.write("### Delete an Entire Session")
+
+        session_to_delete = st.selectbox(
+            "Select session to delete:",
+            session_names,
+            key="delete_session_select"
+        )
+
+        if st.button("Delete Session", key="delete_session_btn"):
+            st.session_state["confirm_delete_session"] = session_to_delete
+
+        if st.session_state.get("confirm_delete_session") == session_to_delete:
+            st.warning(f"Delete session '{session_to_delete}' and ALL hands in it?")
+
+            c1, c2 = st.columns(2)
+
+            with c1:
+                if st.button("Yes, Delete Session", key="confirm_delete_session_yes"):
+                    supabase.table("hands").delete().eq("game_name", session_to_delete).execute()
+                    supabase.table("sessions").delete().eq("name", session_to_delete).execute()
+
+                    st.success(f"Session '{session_to_delete}' deleted.")
+                    st.session_state["confirm_delete_session"] = None
+                    st.session_state["active_session_id"] = None
+                    st.rerun()
+
+            with c2:
+                if st.button("Cancel", key="confirm_delete_session_no"):
+                    st.session_state["confirm_delete_session"] = None
+
+    else:
+        st.info("Enter the admin password to access delete tools.")
 
 # ============================
 # ===== END OF BLOCK 2 =======

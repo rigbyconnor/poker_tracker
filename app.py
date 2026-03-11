@@ -339,8 +339,10 @@ with st.expander("Log a Hand", expanded=False):
 # ===== START OF BLOCK 2 =====
 # ============================
 
+#=============================
+#Player Matrix DataFrame
+#=============================
 
-# Building Player Hand Matrix details
 
 def build_player_hand_matrix(hands, players_in_game):
     """
@@ -354,6 +356,9 @@ def build_player_hand_matrix(hands, players_in_game):
     chronological = list(reversed(hands))  # oldest → newest
     matrix_rows = []
 
+    # Pot size → numeric value
+    pot_value_map = {"S": 1, "M": 2, "L": 3}
+
     # Track cumulative stats per player
     cum = {
         p: {
@@ -363,7 +368,8 @@ def build_player_hand_matrix(hands, players_in_game):
             "elims": 0,
             "win_streak": 0,
             "loss_streak": 0,
-            "alive": True
+            "alive": True,
+            "cumulative_pot_value": 0,   # NEW
         }
         for p in players_in_game
     }
@@ -408,15 +414,11 @@ def build_player_hand_matrix(hands, players_in_game):
         # Update cumulative stats for winner
         if cum[winner]["alive"]:
             cum[winner]["wins"] += 1
-            if aggressive_win:
-                # aggressive wins count as wins anyway
-                pass
 
         # Showdown logic
         is_showdown = (street == "River" and hand_type != "No Showdown")
-        if is_showdown:
-            if cum[winner]["alive"]:
-                cum[winner]["showdown_wins"] += 1
+        if is_showdown and cum[winner]["alive"]:
+            cum[winner]["showdown_wins"] += 1
 
         # Fold logic
         for p in players_in_game:
@@ -437,7 +439,6 @@ def build_player_hand_matrix(hands, players_in_game):
         # Streak logic
         for p in players_in_game:
             if not cum[p]["alive"]:
-                # Freeze streaks after elimination
                 continue
 
             if p == winner:
@@ -449,6 +450,9 @@ def build_player_hand_matrix(hands, players_in_game):
 
         # Alive AFTER this hand
         alive_after = {p: cum[p]["alive"] for p in players_in_game}
+
+        # Determine pot value for this hand
+        pot_val = pot_value_map.get(pot_size, 0)
 
         # Build rows: one per player
         for p in players_in_game:
@@ -466,12 +470,28 @@ def build_player_hand_matrix(hands, players_in_game):
                 eliminated_flag = (p in eliminated)
                 aggressive_flag = (p == winner and aggressive_win)
             else:
-                # Player was already eliminated → N/A fields
                 folded = "N/A"
                 showdown_participation = "N/A"
                 showdown_loser = "N/A"
                 eliminated_flag = "N/A"
                 aggressive_flag = "N/A"
+
+            # -----------------------------
+            # NEW: Pot value change logic
+            # -----------------------------
+            if alive_before[p]:
+                if p == winner:
+                    pot_change = pot_val
+                elif p in showdown_losers:
+                    pot_change = -pot_val
+                else:
+                    pot_change = 0
+            else:
+                pot_change = "N/A"
+
+            # Update cumulative pot value (freeze after elimination)
+            if isinstance(pot_change, int):
+                cum[p]["cumulative_pot_value"] += pot_change
 
             matrix_rows.append({
                 "hand_id": hand_id,
@@ -504,6 +524,10 @@ def build_player_hand_matrix(hands, players_in_game):
                 "win_streak_after_hand": cum[p]["win_streak"],
                 "loss_streak_after_hand": cum[p]["loss_streak"],
 
+                # NEW: Pot momentum fields
+                "pot_value_change": pot_change,
+                "cumulative_pot_value": cum[p]["cumulative_pot_value"],
+
                 # Context
                 "num_players_alive": sum(alive_before.values()),
                 "num_players_eliminated": sum(1 for x in alive_before.values() if not x),
@@ -511,6 +535,11 @@ def build_player_hand_matrix(hands, players_in_game):
             })
 
     return pd.DataFrame(matrix_rows)
+#=============================
+#Player Matrix DataFrame End
+#=============================
+
+
 
 # ---------------------------------------------------------
 # 4. Session Data (Tap‑to‑Expand Actions)

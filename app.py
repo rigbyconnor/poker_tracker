@@ -557,7 +557,6 @@ def build_player_hand_matrix(hands, players_in_game):
 
     return pd.DataFrame(matrix_rows)
 
-    st.write(matrix_df[["player", "hand_number", "hands_since_last_win", "max_hands_since_last_win"]].tail(20))
 
 #=============================
 # Player Matrix DataFrame End
@@ -1028,160 +1027,183 @@ with st.expander("Session Game Stats"):
             print("Error rendering pot table:", e)
             st.write("Pot size table unavailable.")
 
-        # ---------------------------------------------------------
-        # Awards (Hardened)
-        # ---------------------------------------------------------
-        st.subheader("Awards")
-
-        def get_clear_winner(key):
-            try:
-                values = [s[key] for s in player_stats.values()]
-                max_val = max(values)
-                if values.count(max_val) == 1 and max_val > 0:
-                    for p, s in player_stats.items():
-                        if s[key] == max_val:
-                            return p, max_val
-            except Exception as e:
-                print(f"Award error ({key}):", e)
-            return None, None
-
-        # Heater Award
-        try:
-            heater_p, heater_v = get_clear_winner("max_win_streak")
-            if heater_p:
-                st.write(f"🔥 **Heater Award:** {heater_p} peaked with a {heater_v}-hand win streak.")
-            else:
-                st.write("🔥 **Heater Award:**")
-        except Exception as e:
-            print("Error computing Heater Award:", e)
-
-        # Ice Cold Award (Longest drought without a win)
-        try:
-            cold_p, cold_v = get_clear_winner("max_hands_since_last_win")
-            if cold_p:
-                st.write(f"❄️ **Ice Cold Award:** {cold_p} went {cold_v} consective hands without a win.")
-            else:
-                st.write("❄️ **Ice Cold Award:**")
-        except Exception as e:
-            print("Error computing Ice Cold Award:", e)
-
-        # Fastest Bustout
-        try:
-            elim_order = []
-            for idx, h in enumerate(chronological, start=1):
-                eliminated = h.get("eliminated_player") or []
-                if isinstance(eliminated, str):
-                    eliminated = [eliminated]
-                for p in eliminated:
-                    elim_order.append((p, idx))
-
-            if elim_order:
-                fb_p, fb_h = elim_order[0]
-                st.write(f"💀 **Fastest Bustout:** {fb_p} was eliminated on Hand #{fb_h}.")
-            else:
-                st.write("💀 **Fastest Bustout:**")
-
-        except Exception as e:
-            print("Error computing Fastest Bustout:", e)
 
 
-        # ---------------------------------------------------------
-        # Showdown Win Percentage Awards
-        # ---------------------------------------------------------
-        try:
-            sd_candidates = []
-            for p, s in player_stats.items():
-                sd_played = s["showdown_participation"]
-                sd_won = s["showdown_wins"]
 
-                if sd_played >= 5:
-                    pct = (sd_won / sd_played) * 100
-                    sd_candidates.append((p, pct, sd_played, sd_won))
+# ---------------------------------------------------------
+# Awards (Hardened)
+# ---------------------------------------------------------
+st.subheader("Awards")
 
-            if sd_candidates:
-                # Sort by showdown win %
-                sd_sorted = sorted(sd_candidates, key=lambda x: x[1], reverse=True)
+# Tie-safe award helper
+def get_award_winners(key):
+    try:
+        values = {p: s[key] for p, s in player_stats.items()}
 
-                # Best showdown performer
-                best_p, best_pct, best_played, best_wins = sd_sorted[0]
-                if sum(1 for x in sd_sorted if x[1] == best_pct) == 1:
-                    st.write(
-                        f"🎯 **The Closer:** {best_p} won {best_pct:.0f}% of showdowns "
-                        f"({best_wins} wins in {best_played} showdowns, min 5)."
-                    )
-                else:
-                    st.write("🎯 **The Closer:**")
+        if not values:
+            return [], None
 
-                # Worst showdown performer
-                worst_p, worst_pct, worst_played, worst_wins = sd_sorted[-1]
-                if sum(1 for x in sd_sorted if x[1] == worst_pct) == 1:
-                    st.write(
-                        f"🫣 **I Should Have Folded:** {worst_p} won {worst_pct:.0f}% of showdowns "
-                        f"({worst_wins} wins in {worst_played} showdowns, min 5)."
-                    )
-                else:
-                    st.write("🫣 **I Should Have Folded:**")
+        max_val = max(values.values())
+        winners = [p for p, v in values.items() if v == max_val]
 
-            else:
-                st.write("🎯 **The Closer:**")
-                st.write("🫣 **I Should Have Folded:**")
+        return winners, max_val
 
-        except Exception as e:
-            print("Error computing showdown awards:", e)
+    except Exception as e:
+        print(f"Award error ({key}):", e)
+        return [], None
 
 
-        # Most Active
-        try:
-            active_p, active_v = get_clear_winner("showdown_participation")
-            if active_p:
-                st.write(f"📈 **Most Active Player:** {active_p} participated in {active_v} showdowns.")
-            else:
-                st.write("📈 **Most Active Player:**")
-        except Exception as e:
-            print("Error computing Most Active Award:", e)
+# Heater Award
+try:
+    heater_players, heater_v = get_award_winners("max_win_streak")
+    if heater_players and heater_v > 0:
+        names = ", ".join(heater_players)
+        st.write(f"🔥 **Heater Award:** {names} peaked with a {heater_v}-hand win streak.")
+    else:
+        st.write("🔥 **Heater Award:**")
+except Exception as e:
+    print("Error computing Heater Award:", e)
 
-        # Most Passive
-        try:
-            passive_p, passive_v = get_clear_winner("folds")
-            if passive_p:
-                st.write(f"🪫 **Most Passive Player:** {passive_p} folded {passive_v} times.")
-            else:
-                st.write("🪫 **Most Passive Player:**")
-        except Exception as e:
-            print("Error computing Most Passive Award:", e)
 
-        # Aggression Award
-        try:
-            agg_p, agg_v = get_clear_winner("aggressive_wins")
-            if agg_p:
-                st.write(f"⚔️ **Aggression Award:** {agg_p} won {agg_v} pots before the river.")
-            else:
-                st.write("⚔️ **Aggression Award:**")
-        except Exception as e:
-            print("Error computing Aggression Award:", e)
+# Ice Cold Award (Longest drought without a win)
+try:
+    cold_players, cold_v = get_award_winners("max_hands_since_last_win")
+    if cold_players and cold_v is not None and cold_v > 0:
+        names = ", ".join(cold_players)
+        st.write(f"❄️ **Ice Cold Award:** {names} went {cold_v} consecutive hands without a win.")
+    else:
+        st.write("❄️ **Ice Cold Award:**")
+except Exception as e:
+    print("Error computing Ice Cold Award:", e)
 
-        # Most Dominant Player
-        try:
-            dom_candidates = [
-                (p, s) for p, s in player_stats.items()
-                if s["hands_played"] >= 5
-            ]
 
-            if dom_candidates:
-                win_rates = [(p, s["wins"] / s["hands_played"]) for p, s in dom_candidates]
-                max_rate = max(v for _, v in win_rates)
+# Fastest Bustout
+try:
+    elim_order = []
+    for idx, h in enumerate(chronological, start=1):
+        eliminated = h.get("eliminated_player") or []
+        if isinstance(eliminated, str):
+            eliminated = [eliminated]
+        for p in eliminated:
+            elim_order.append((p, idx))
 
-                if sum(1 for _, v in win_rates if v == max_rate) == 1:
-                    dom_p = next(p for p, v in win_rates if v == max_rate)
-                    dom_pct = round(max_rate * 100)
-                    st.write(f"🏆 **Most Dominant Player:** {dom_p} leads with a {dom_pct}% win rate.")
-                else:
-                    st.write("🏆 **Most Dominant Player:**")
-            else:
-                st.write("🏆 **Most Dominant Player:**")
+    if elim_order:
+        fb_p, fb_h = elim_order[0]
+        st.write(f"💀 **Fastest Bustout:** {fb_p} was eliminated on Hand #{fb_h}.")
+    else:
+        st.write("💀 **Fastest Bustout:**")
+except Exception as e:
+    print("Error computing Fastest Bustout:", e)
 
-        except Exception as e:
-            print("Error computing Dominant Player Award:", e)
+
+# ---------------------------------------------------------
+# Showdown Win Percentage Awards
+# ---------------------------------------------------------
+try:
+    sd_candidates = []
+    for p, s in player_stats.items():
+        sd_played = s["showdown_participation"]
+        sd_won = s["showdown_wins"]
+
+        if sd_played >= 5:
+            pct = (sd_won / sd_played) * 100
+            sd_candidates.append((p, pct, sd_played, sd_won))
+
+    if sd_candidates:
+        sd_sorted = sorted(sd_candidates, key=lambda x: x[1], reverse=True)
+
+        # Best showdown performer
+        best_p, best_pct, best_played, best_wins = sd_sorted[0]
+        if sum(1 for x in sd_sorted if x[1] == best_pct) == 1:
+            st.write(
+                f"🎯 **The Closer:** {best_p} won {best_pct:.0f}% of showdowns "
+                f"({best_wins} wins in {best_played} showdowns, min 5)."
+            )
+        else:
+            st.write("🎯 **The Closer:**")
+
+        # Worst showdown performer
+        worst_p, worst_pct, worst_played, worst_wins = sd_sorted[-1]
+        if sum(1 for x in sd_sorted if x[1] == worst_pct) == 1:
+            st.write(
+                f"🫣 **I Should Have Folded:** {worst_p} won {worst_pct:.0f}% of showdowns "
+                f"({worst_wins} wins in {worst_played} showdowns, min 5)."
+            )
+        else:
+            st.write("🫣 **I Should Have Folded:**")
+
+    else:
+        st.write("🎯 **The Closer:**")
+        st.write("🫣 **I Should Have Folded:**")
+
+except Exception as e:
+    print("Error computing showdown awards:", e)
+
+
+# Most Active
+try:
+    active_players, active_v = get_award_winners("showdown_participation")
+    if active_players and active_v > 0:
+        names = ", ".join(active_players)
+        st.write(f"📈 **Most Active Player:** {names} participated in {active_v} showdowns.")
+    else:
+        st.write("📈 **Most Active Player:**")
+except Exception as e:
+    print("Error computing Most Active Award:", e)
+
+
+# Most Passive
+try:
+    passive_players, passive_v = get_award_winners("folds")
+    if passive_players and passive_v > 0:
+        names = ", ".join(passive_players)
+        st.write(f"🪫 **Most Passive Player:** {names} folded {passive_v} times.")
+    else:
+        st.write("🪫 **Most Passive Player:**")
+except Exception as e:
+    print("Error computing Most Passive Award:", e)
+
+
+# Aggression Award
+try:
+    agg_players, agg_v = get_award_winners("aggressive_wins")
+    if agg_players and agg_v > 0:
+        names = ", ".join(agg_players)
+        st.write(f"⚔️ **Aggression Award:** {names} won {agg_v} pots before the river.")
+    else:
+        st.write("⚔️ **Aggression Award:**")
+except Exception as e:
+    print("Error computing Aggression Award:", e)
+
+
+# Most Dominant Player
+try:
+    dom_candidates = [
+        (p, s) for p, s in player_stats.items()
+        if s["hands_played"] >= 5
+    ]
+
+    if dom_candidates:
+        win_rates = [(p, s["wins"] / s["hands_played"]) for p, s in dom_candidates]
+        max_rate = max(v for _, v in win_rates)
+
+        if sum(1 for _, v in win_rates if v == max_rate) == 1:
+            dom_p = next(p for p, v in win_rates if v == max_rate)
+            dom_pct = round(max_rate * 100)
+            st.write(f"🏆 **Most Dominant Player:** {dom_p} leads with a {dom_pct}% win rate.")
+        else:
+            st.write("🏆 **Most Dominant Player:**")
+    else:
+        st.write("🏆 **Most Dominant Player:**")
+
+except Exception as e:
+    print("Error computing Dominant Player Award:", e)
+
+
+# ---------------------------------------------------------
+# Showdown Win Percentage Awards End
+# ---------------------------------------------------------
+
 
 
 

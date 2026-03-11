@@ -1390,6 +1390,25 @@ with st.expander("Admin Tools (Danger Zone)"):
 
     st.markdown("---")
 
+
+#==============================
+#Deleting Players / Sessions
+#==============================
+
+# ---------------------------------------------------------
+# Admin Password Gate
+# ---------------------------------------------------------
+ADMIN_PASSWORD = "poker123"
+
+st.write("### Admin Password Required")
+admin_pw = st.text_input("Enter admin password", type="password")
+
+if admin_pw == ADMIN_PASSWORD:
+    st.success("Admin mode unlocked.")
+
+    # ---------------------------------------------------------
+    # Delete a Global Player
+    # ---------------------------------------------------------
     st.write("### Delete a Global Player")
 
     player_to_delete = st.selectbox(
@@ -1419,6 +1438,9 @@ with st.expander("Admin Tools (Danger Zone)"):
 
     st.markdown("---")
 
+    # ---------------------------------------------------------
+    # Delete an Entire Session
+    # ---------------------------------------------------------
     st.write("### Delete an Entire Session")
 
     session_to_delete = st.selectbox(
@@ -1448,6 +1470,9 @@ with st.expander("Admin Tools (Danger Zone)"):
         with c2:
             if st.button("Cancel", key="confirm_delete_session_no"):
                 st.session_state["confirm_delete_session"] = None
+
+else:
+    st.info("Enter the admin password to access delete tools.")
 
 # ============================
 # ===== END OF BLOCK 2 =======

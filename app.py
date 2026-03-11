@@ -772,9 +772,8 @@ with st.expander("Session Game Stats"):
 
 
 
-
-                # ---------------------------------------------------------
-        # Build Player-Hand Matrix (for trendline + advanced stats)
+        # ---------------------------------------------------------
+        # Build Player-Hand Matrix (for trendlines + advanced stats)
         # ---------------------------------------------------------
         matrix_df = build_player_hand_matrix(hands, players_in_game)
 
@@ -787,7 +786,7 @@ with st.expander("Session Game Stats"):
             # Remove eliminated-player placeholder rows for the chart
             trend_df = matrix_df[matrix_df["winner"] != "N/A"]
 
-            chart = (
+            win_chart = (
                 alt.Chart(trend_df)
                 .mark_line(point=True)
                 .encode(
@@ -804,11 +803,47 @@ with st.expander("Session Game Stats"):
                 .properties(height=300)
             )
 
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(win_chart, use_container_width=True)
 
         except Exception as e:
             st.write("Could not generate win progression chart.")
             print("Trendline error:", e)
+
+
+        # ---------------------------------------------------------
+        # Pot Value Momentum Trendline (Chip Proxy)
+        # ---------------------------------------------------------
+        st.write("### Pot Value Momentum Trendline")
+
+        try:
+            # Filter out eliminated players' frozen rows
+            pot_df = matrix_df[matrix_df["pot_value_change"] != "N/A"]
+
+            pot_chart = (
+                alt.Chart(pot_df)
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X("hand_number:Q", title="Hand Number"),
+                    y=alt.Y("cumulative_pot_value:Q", title="Cumulative Pot Value"),
+                    color=alt.Color("player:N", title="Player"),
+                    tooltip=[
+                        "player",
+                        "hand_number",
+                        "pot_value_change",
+                        "cumulative_pot_value",
+                        "pot_size",
+                        "winner",
+                    ],
+                )
+                .properties(height=300)
+            )
+
+            st.altair_chart(pot_chart, use_container_width=True)
+
+        except Exception as e:
+            st.write("Could not generate pot value trendline.")
+            print("Pot value trendline error:", e)
+
 
 
 

@@ -557,6 +557,8 @@ def build_player_hand_matrix(hands, players_in_game):
 
     return pd.DataFrame(matrix_rows)
 
+    st.write(matrix_df[["player", "hand_number", "hands_since_last_win", "max_hands_since_last_win"]].tail(20))
+
 #=============================
 # Player Matrix DataFrame End
 #=============================

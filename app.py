@@ -843,7 +843,7 @@ with st.expander("Session Game Stats"):
         # Chip Stack Proxy Trendline (Chip Proxy)
         # ---------------------------------------------------------
         st.write("### Chip Stack Proxy Trendline")
-        st.caption("Pot Size Values: S = 1 • M = 2 • L = 3")
+        st.caption("Pot Size Proxy Values: S = 1 • M = 2 • L = 3")
 
         try:
             # Filter out eliminated players' frozen rows

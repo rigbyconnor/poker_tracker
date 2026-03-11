@@ -1350,7 +1350,7 @@ with st.expander("Hand History", expanded=False):
 
 st.header("Admin")
 
-with st.expander("Admin Tools (Danger Zone)"):
+with st.expander("Admin Tools"):
 
     # ---------------------------------------------------------
     # Download Data
@@ -1397,7 +1397,7 @@ with st.expander("Admin Tools (Danger Zone)"):
     # ---------------------------------------------------------
     ADMIN_PASSWORD = "poker123"
 
-    st.write("### Admin Password Required")
+    st.write("### Input Password to Delete Sessions / Players")
     admin_pw = st.text_input("Enter admin password", type="password")
 
     if admin_pw == ADMIN_PASSWORD:

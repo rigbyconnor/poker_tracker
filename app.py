@@ -20,86 +20,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ---------------------------------------------------------
-# Custom CSS & Theme
-# ---------------------------------------------------------
-def apply_custom_theme():
-    """Apply custom CSS styling based on theme preference."""
-    
-    if "theme" not in st.session_state:
-        st.session_state.theme = "light"
-    
-    # Theme toggle in sidebar
-    st.sidebar.title("🎨 Theme")
-    theme = st.sidebar.radio(
-        "Select Theme",
-        ["Light", "Dark"],
-        index=0 if st.session_state.theme == "light" else 1
-    )
-    st.session_state.theme = theme.lower()
-    
-    # Custom CSS
-    if st.session_state.theme == "dark":
-        custom_css = """
-        <style>
-        .stApp {
-            background-color: #1E1E1E;
-        }
-        .stSidebar {
-            background-color: #252526;
-        }
-        h1, h2, h3, h4, h5, h6 {
-            color: #E0E0E0 !important;
-        }
-        .stMarkdown, .stText {
-            color: #D0D0D0 !important;
-        }
-        .stDataFrame {
-            background-color: #2D2D2D;
-        }
-        div[data-testid="stMetricValue"] {
-            color: #4ECDC4 !important;
-        }
-        .stButton>button {
-            background-color: #FF6B6B;
-            color: white;
-        }
-        .stSelectbox, .stRadio, .stMultiselect {
-            background-color: #2D2D2D;
-        }
-        </style>
-        """
-    else:
-        custom_css = """
-        <style>
-        .stApp {
-            background-color: #F5F5F5;
-        }
-        .stSidebar {
-            background-color: #FFFFFF;
-        }
-        h1, h2, h3, h4, h5, h6 {
-            color: #262730 !important;
-        }
-        .stMarkdown, .stText {
-            color: #262730 !important;
-        }
-        .stDataFrame {
-            background-color: #FFFFFF;
-        }
-        div[data-testid="stMetricValue"] {
-            color: #FF4B4B !important;
-        }
-        .stButton>button {
-            background-color: #FF4B4B;
-            color: white;
-        }
-        </style>
-        """
-    
-    st.markdown(custom_css, unsafe_allow_html=True)
-
-apply_custom_theme()
 
 # ---------------------------------------------------------
 # Supabase Connection
@@ -1170,7 +1090,7 @@ with tab2:
                 st.write("🏆 **Most Dominant Player:**")
         
         except Exception as e:
-            st.write("🏆 **Most Dominant Player:**")
+            st.write("🏆 **Most Dominant Player:")
 
 # ============================
 # TAB 3: History

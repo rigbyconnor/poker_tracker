@@ -506,7 +506,7 @@ if "confirm_delete_session" not in st.session_state:
 # ---------------------------------------------------------
 # Session Selector (Sidebar)
 # ---------------------------------------------------------
-st.sidebar.title("🎰 Game Session")
+st.sidebar.title("🎰 game session 1")
 
 if st.session_state["active_session_id"]:
     active_session = next(
@@ -1465,5 +1465,3 @@ with tab4:
     
     else:
         st.info("Enter the admin password to access delete tools.")
-
-    

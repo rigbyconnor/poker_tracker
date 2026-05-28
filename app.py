@@ -42,8 +42,8 @@ def apply_modern_css():
         background: transparent;
     }
     
-    /* Headers */
-    h1, h2, h3, h4, h5, h6 {
+    /* Headers - Sidebar only */
+    .stSidebar h1, .stSidebar h2, .stSidebar h3, .stSidebar h4, .stSidebar h5, .stSidebar h6 {
         color: #ffffff !important;
         font-weight: 600;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
@@ -58,38 +58,29 @@ def apply_modern_css():
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     }
     
-    /* Dark text inside main content area */
-    .main .block-container h1,
-    .main .block-container h2,
-    .main .block-container h3,
-    .main .block-container h4,
-    .main .block-container h5,
-    .main .block-container h6 {
+    /* Dark text in main content */
+    .main h1, .main h2, .main h3, .main h4, .main h5, .main h6 {
         color: #1a1a2e !important;
         text-shadow: none;
     }
     
-    .main .block-container label,
-    .main .block-container .stMarkdown,
-    .main .block-container .stText,
-    .main .block-container p,
-    .main .block-container span,
-    .main .block-container div {
+    .main label,
+    .main .stMarkdown,
+    .main .stText,
+    .main p,
+    .main span {
         color: #333333 !important;
     }
     
-    .main .block-container [data-testid="stMarkdownContainer"] {
+    .main [data-testid="stMarkdownContainer"] {
         color: #333333 !important;
     }
     
-    /* Force dark text for all elements in main content */
-    .main * {
+    .main .stRadio label,
+    .main .stCheckbox label,
+    .main .stSelectbox label,
+    .main .stMultiselect label {
         color: #333333 !important;
-    }
-    
-    /* But keep headers dark */
-    .main h1, .main h2, .main h3, .main h4, .main h5, .main h6 {
-        color: #1a1a2e !important;
     }
     
     /* Cards/Containers */

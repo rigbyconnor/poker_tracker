@@ -29,13 +29,14 @@ def apply_modern_css():
     <style>
     /* Global Styles */
     .stApp {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #f5f5f5;
     }
     
     /* Sidebar */
     .stSidebar {
-        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+        background: #ffffff;
         padding: 2rem;
+        border-right: 1px solid #e0e0e0;
     }
     
     .stSidebar [data-testid="stSidebarContent"] {
@@ -44,18 +45,17 @@ def apply_modern_css():
     
     /* Headers - Sidebar only */
     .stSidebar h1, .stSidebar h2, .stSidebar h3, .stSidebar h4, .stSidebar h5, .stSidebar h6 {
-        color: #ffffff !important;
+        color: #1a1a2e !important;
         font-weight: 600;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
     
     /* Main Content Area */
     .main .block-container {
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 20px;
+        background: #ffffff;
+        border-radius: 12px;
         padding: 2rem;
         margin-top: 1rem;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
     
     /* Dark text in main content */
@@ -86,60 +86,56 @@ def apply_modern_css():
     /* Cards/Containers */
     div[data-testid="stExpander"] {
         background: #ffffff;
-        border-radius: 15px;
-        border: 1px solid #e0e0e0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         margin: 1rem 0;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
     }
     
     div[data-testid="stExpander"]:hover {
-        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
-        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
     }
     
     /* Buttons */
     .stButton>button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #2563eb;
         color: white;
         border: none;
-        border-radius: 10px;
-        padding: 0.5rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        border-radius: 6px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
     }
     
     .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        background: #1d4ed8;
     }
     
     .stButton>button[kind="primary"] {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+        background: #2563eb;
     }
     
     /* Inputs */
     .stTextInput>div>div>input,
     .stSelectbox>div>div>select,
     .stMultiselect>div>div>div>div {
-        border-radius: 10px;
-        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
         padding: 0.5rem;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
     }
     
     .stTextInput>div>div>input:focus,
     .stSelectbox>div>div>select:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
     }
     
     /* Radio Buttons */
     .stRadio>div {
-        background: #f8f9fa;
-        border-radius: 10px;
+        background: #f9fafb;
+        border-radius: 6px;
         padding: 1rem;
     }
     
@@ -161,9 +157,9 @@ def apply_modern_css():
     
     /* DataFrames */
     .stDataFrame {
-        border-radius: 15px;
+        border-radius: 8px;
         overflow: hidden;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
     
     .stDataFrame table {
@@ -172,72 +168,70 @@ def apply_modern_css():
     }
     
     .stDataFrame th {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: #f8fafc;
+        color: #1a1a2e;
         font-weight: 600;
+        border-bottom: 2px solid #e5e7eb;
     }
     
     .stDataFrame tr:nth-child(even) {
-        background: #f8f9fa;
+        background: #f9fafb;
     }
     
     .stDataFrame tr:hover {
-        background: #e9ecef;
+        background: #f3f4f6;
     }
     
     /* Metrics */
     div[data-testid="stMetricValue"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #2563eb !important;
         font-weight: 700;
     }
     
     div[data-testid="stMetricDelta"] {
-        color: #28a745 !important;
+        color: #16a34a !important;
     }
     
     /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 2rem;
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: 15px;
-        padding: 0.5rem 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        gap: 0.5rem;
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 0.25rem;
+        border: 1px solid #e5e7eb;
     }
     
     .stTabs [data-baseweb="tab"] {
-        padding: 0.75rem 1.5rem;
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.3s ease;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 500;
+        transition: all 0.2s ease;
     }
     
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: #ffffff;
+        color: #2563eb;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
     
     /* Info/Success/Warning Messages */
     .stAlert {
-        border-radius: 15px;
+        border-radius: 8px;
         border: none;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
     
     /* Download Buttons */
     .stDownloadButton>button {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        border-radius: 10px;
-        font-weight: 600;
+        background: #16a34a;
+        border-radius: 6px;
+        font-weight: 500;
     }
     
     /* Sidebar Title */
     .stSidebar h1 {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-size: 1.8rem;
+        color: #1a1a2e !important;
+        font-size: 1.5rem;
         margin-bottom: 1rem;
     }
     
@@ -248,7 +242,7 @@ def apply_modern_css():
     
     /* Plotly Charts */
     .js-plotly-plot {
-        border-radius: 15px;
+        border-radius: 8px;
         overflow: hidden;
     }
     </style>

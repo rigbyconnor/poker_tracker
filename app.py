@@ -71,12 +71,25 @@ def apply_modern_css():
     
     .main .block-container label,
     .main .block-container .stMarkdown,
-    .main .block-container .stText {
+    .main .block-container .stText,
+    .main .block-container p,
+    .main .block-container span,
+    .main .block-container div {
         color: #333333 !important;
     }
     
     .main .block-container [data-testid="stMarkdownContainer"] {
         color: #333333 !important;
+    }
+    
+    /* Force dark text for all elements in main content */
+    .main * {
+        color: #333333 !important;
+    }
+    
+    /* But keep headers dark */
+    .main h1, .main h2, .main h3, .main h4, .main h5, .main h6 {
+        color: #1a1a2e !important;
     }
     
     /* Cards/Containers */
@@ -658,7 +671,7 @@ if "confirm_delete_session" not in st.session_state:
 # ---------------------------------------------------------
 # Session Selector (Sidebar)
 # ---------------------------------------------------------
-st.sidebar.title("🎰 game session 1")
+st.sidebar.title("Game Session")
 
 if st.session_state["active_session_id"]:
     active_session = next(

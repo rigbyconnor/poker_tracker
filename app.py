@@ -58,6 +58,27 @@ def apply_modern_css():
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     }
     
+    /* Dark text inside main content area */
+    .main .block-container h1,
+    .main .block-container h2,
+    .main .block-container h3,
+    .main .block-container h4,
+    .main .block-container h5,
+    .main .block-container h6 {
+        color: #1a1a2e !important;
+        text-shadow: none;
+    }
+    
+    .main .block-container label,
+    .main .block-container .stMarkdown,
+    .main .block-container .stText {
+        color: #333333 !important;
+    }
+    
+    .main .block-container [data-testid="stMarkdownContainer"] {
+        color: #333333 !important;
+    }
+    
     /* Cards/Containers */
     div[data-testid="stExpander"] {
         background: #ffffff;
@@ -116,6 +137,22 @@ def apply_modern_css():
         background: #f8f9fa;
         border-radius: 10px;
         padding: 1rem;
+    }
+    
+    .stRadio label {
+        color: #333333 !important;
+    }
+    
+    .stCheckbox label {
+        color: #333333 !important;
+    }
+    
+    .stSelectbox label {
+        color: #333333 !important;
+    }
+    
+    .stMultiselect label {
+        color: #333333 !important;
     }
     
     /* DataFrames */

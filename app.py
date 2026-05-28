@@ -20,6 +20,201 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ---------------------------------------------------------
+# Modern CSS Styling
+# ---------------------------------------------------------
+def apply_modern_css():
+    """Apply modern CSS styling for a clean, professional look."""
+    modern_css = """
+    <style>
+    /* Global Styles */
+    .stApp {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    /* Sidebar */
+    .stSidebar {
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+        padding: 2rem;
+    }
+    
+    .stSidebar [data-testid="stSidebarContent"] {
+        background: transparent;
+    }
+    
+    /* Headers */
+    h1, h2, h3, h4, h5, h6 {
+        color: #ffffff !important;
+        font-weight: 600;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    /* Main Content Area */
+    .main .block-container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-top: 1rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Cards/Containers */
+    div[data-testid="stExpander"] {
+        background: #ffffff;
+        border-radius: 15px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 1rem 0;
+        transition: all 0.3s ease;
+    }
+    
+    div[data-testid="stExpander"]:hover {
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+    
+    /* Buttons */
+    .stButton>button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 0.5rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    
+    .stButton>button[kind="primary"] {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+    }
+    
+    /* Inputs */
+    .stTextInput>div>div>input,
+    .stSelectbox>div>div>select,
+    .stMultiselect>div>div>div>div {
+        border-radius: 10px;
+        border: 2px solid #e0e0e0;
+        padding: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stTextInput>div>div>input:focus,
+    .stSelectbox>div>div>select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    }
+    
+    /* Radio Buttons */
+    .stRadio>div {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1rem;
+    }
+    
+    /* DataFrames */
+    .stDataFrame {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stDataFrame table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .stDataFrame th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-weight: 600;
+    }
+    
+    .stDataFrame tr:nth-child(even) {
+        background: #f8f9fa;
+    }
+    
+    .stDataFrame tr:hover {
+        background: #e9ecef;
+    }
+    
+    /* Metrics */
+    div[data-testid="stMetricValue"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+    }
+    
+    div[data-testid="stMetricDelta"] {
+        color: #28a745 !important;
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2rem;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 15px;
+        padding: 0.5rem 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    /* Info/Success/Warning Messages */
+    .stAlert {
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Download Buttons */
+    .stDownloadButton>button {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        border-radius: 10px;
+        font-weight: 600;
+    }
+    
+    /* Sidebar Title */
+    .stSidebar h1 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Checkbox Grid */
+    .stCheckbox {
+        padding: 0.5rem;
+    }
+    
+    /* Plotly Charts */
+    .js-plotly-plot {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    </style>
+    """
+    st.markdown(modern_css, unsafe_allow_html=True)
+
+apply_modern_css()
 
 # ---------------------------------------------------------
 # Supabase Connection

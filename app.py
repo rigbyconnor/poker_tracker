@@ -734,13 +734,13 @@ alive_players = [p for p in players_in_game if p not in eliminated_so_far]
 # ---------------------------------------------------------
 # Tabbed Navigation
 # ---------------------------------------------------------
-tab1, tab2, tab3, tab4 = st.tabs(["🎮 Live Game", "📊 Analytics", "📜 History", "⚙️ Admin"])
+tab1, tab2, tab3, tab4 = st.tabs(["� Live Game", "📊 Analytics", "📜 History", "⚙️ Admin"])
 
 # ============================
 # TAB 1: Live Game
 # ============================
 with tab1:
-    st.header("🎮 Live Game")
+    st.header("� Live Game")
     
     # Edit Session Players
     with st.expander("Edit Session Players"):

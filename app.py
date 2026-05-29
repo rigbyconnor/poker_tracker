@@ -405,7 +405,7 @@ def generate_satirical_summary(hands: List[Dict[str, Any]], players_in_game: Lis
     chronological = list(reversed(hands))
     
     # Calculate player stats
-    stats = {p: {"wins": 0, "folds": 0, "showdown_wins": 0, "showdown_total": 0, "eliminated": False, "busted_by": None, "busted_hand": None, "aggressive_wins": 0, "small_pot_wins": 0, "big_pot_wins": 0} for p in players_in_game}
+    stats = {p: {"wins": 0, "folds": 0, "showdown_wins": 0, "showdown_losses": 0, "showdown_total": 0, "eliminated": False, "busted_by": None, "busted_hand": None, "aggressive_wins": 0, "small_pot_wins": 0, "big_pot_wins": 0} for p in players_in_game}
     elim_order = []
     
     for idx, h in enumerate(chronological, start=1):
@@ -438,6 +438,7 @@ def generate_satirical_summary(hands: List[Dict[str, Any]], players_in_game: Lis
                     stats[winner]["showdown_total"] += 1
             for loser in showdown_losers:
                 if loser in stats:
+                    stats[loser]["showdown_losses"] += 1
                     stats[loser]["showdown_total"] += 1
         
         for p in players_in_game:
@@ -629,7 +630,7 @@ def generate_satirical_summary(hands: List[Dict[str, Any]], players_in_game: Lis
             status = "🏆 WINNER"
         else:
             status = f"💀 by {p_stats['busted_by']} on hand #{p_stats['busted_hand']}"
-        summary += f"{i}. **{p}** - {p_stats['wins']} wins, {p_stats['folds']} folds - {status}\n"
+        summary += f"{i}. **{p}** - {p_stats['wins']} wins, {p_stats['showdown_losses']} SD losses, {p_stats['folds']} folds - {status}\n"
     
     return summary
 

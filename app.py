@@ -850,10 +850,17 @@ with tab1:
             if street != "River":
                 allowed_hand_types = ["No Showdown"]
             else:
-                allowed_hand_types = [
-                    "No Showdown", "High Card", "Pair", "Two Pair", "Trips", "Straight",
-                    "Flush", "Full House", "Quads", "Straight Flush"
-                ]
+                # If split pot, remove "No Showdown" option (split pot requires showdown)
+                if split_pot:
+                    allowed_hand_types = [
+                        "High Card", "Pair", "Two Pair", "Trips", "Straight",
+                        "Flush", "Full House", "Quads", "Straight Flush"
+                    ]
+                else:
+                    allowed_hand_types = [
+                        "No Showdown", "High Card", "Pair", "Two Pair", "Trips", "Straight",
+                        "Flush", "Full House", "Quads", "Straight Flush"
+                    ]
             
             hand_type = st.radio(
                 "",
@@ -1520,14 +1527,21 @@ with tab3:
                             key=f"edit_street_{h['id']}"
                         )
                         
-                        hand_types = [
-                            "No Showdown", "High Card", "Pair", "Two Pair", "Trips", "Straight",
-                            "Flush", "Full House", "Quads", "Straight Flush"
-                        ]
+                        # If split pot, remove "No Showdown" option (split pot requires showdown)
+                        if new_split_pot:
+                            hand_types = [
+                                "High Card", "Pair", "Two Pair", "Trips", "Straight",
+                                "Flush", "Full House", "Quads", "Straight Flush"
+                            ]
+                        else:
+                            hand_types = [
+                                "No Showdown", "High Card", "Pair", "Two Pair", "Trips", "Straight",
+                                "Flush", "Full House", "Quads", "Straight Flush"
+                            ]
                         new_hand_type = st.radio(
                             "Hand Type",
                             hand_types,
-                            index=hand_types.index(h["hand_type"]),
+                            index=hand_types.index(h["hand_type"]) if h["hand_type"] in hand_types else 0,
                             key=f"edit_handtype_{h['id']}"
                         )
                         

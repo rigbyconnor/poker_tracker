@@ -1079,130 +1079,131 @@ with tab1:
             st.success("✅ Hand logged successfully!")
             st.session_state["hand_submitted"] = False
         
-        with st.form("hand_logging_form", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("Street")
-                streets = ["Preflop", "Flop", "Turn", "River"]
-                street = st.radio("", streets, key=f"street_radio_{active_session['id']}")
-            
-            with col2:
-                st.subheader("Winner")
-                # Split Pot checkbox only appears when River is selected
-                if street == "River":
-                    split_pot = st.checkbox("Split Pot?", key=f"split_pot_{active_session['id']}")
-                    
-                    if split_pot:
-                        winners = st.multiselect("Select winners:", alive_players, key=f"winners_multiselect_{active_session['id']}")
-                    else:
-                        winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}")
-                        winners = [winner]
+        # Use a unique key for each submission to reset form state
+        form_key = f"hand_form_{st.session_state.get('form_counter', 0)}"
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Street")
+            streets = ["Preflop", "Flop", "Turn", "River"]
+            street = st.radio("", streets, key=f"street_radio_{active_session['id']}_{st.session_state.get('form_counter', 0)}")
+        
+        with col2:
+            st.subheader("Winner")
+            # Split Pot checkbox only appears when River is selected
+            if street == "River":
+                split_pot = st.checkbox("Split Pot?", key=f"split_pot_{active_session['id']}_{st.session_state.get('form_counter', 0)}")
+                
+                if split_pot:
+                    winners = st.multiselect("Select winners:", alive_players, key=f"winners_multiselect_{active_session['id']}_{st.session_state.get('form_counter', 0)}")
                 else:
-                    split_pot = False
-                    winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}")
+                    winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}_{st.session_state.get('form_counter', 0)}")
                     winners = [winner]
+            else:
+                split_pot = False
+                winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}_{st.session_state.get('form_counter', 0)}")
+                winners = [winner]
+        
+        col3, col4 = st.columns(2)
+        
+        with col3:
+            st.subheader("Hand Type")
             
-            col3, col4 = st.columns(2)
-            
-            with col3:
-                st.subheader("Hand Type")
-                
-                if street != "River":
-                    allowed_hand_types = ["No Showdown"]
+            if street != "River":
+                allowed_hand_types = ["No Showdown"]
+            else:
+                # If split pot, remove "No Showdown" option (split pot requires showdown)
+                if split_pot:
+                    allowed_hand_types = [
+                        "High Card", "Pair", "Two Pair", "Trips", "Straight",
+                        "Flush", "Full House", "Quads", "Straight Flush"
+                    ]
                 else:
-                    # If split pot, remove "No Showdown" option (split pot requires showdown)
-                    if split_pot:
-                        allowed_hand_types = [
-                            "High Card", "Pair", "Two Pair", "Trips", "Straight",
-                            "Flush", "Full House", "Quads", "Straight Flush"
-                        ]
-                    else:
-                        allowed_hand_types = [
-                            "No Showdown", "High Card", "Pair", "Two Pair", "Trips", "Straight",
-                            "Flush", "Full House", "Quads", "Straight Flush"
-                        ]
-                
-                hand_type = st.radio(
-                    "",
-                    allowed_hand_types,
-                    key=f"handtype_radio_{active_session['id']}"
-                )
+                    allowed_hand_types = [
+                        "No Showdown", "High Card", "Pair", "Two Pair", "Trips", "Straight",
+                        "Flush", "Full House", "Quads", "Straight Flush"
+                    ]
             
-            with col4:
-                st.subheader("Pot Size")
-                pot_sizes = ["S", "M", "L"]
-                pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}")
+            hand_type = st.radio(
+                "",
+                allowed_hand_types,
+                key=f"handtype_radio_{active_session['id']}_{st.session_state.get('form_counter', 0)}"
+            )
+        
+        with col4:
+            st.subheader("Pot Size")
+            pot_sizes = ["S", "M", "L"]
+            pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}_{st.session_state.get('form_counter', 0)}")
+        
+        showdown_losers = []
+        if street == "River" and hand_type != "No Showdown":
+            # Exclude winners from showdown loser options
+            winners_to_exclude = winners if split_pot else [winner]
+            showdown_options = [p for p in alive_players if p not in winners_to_exclude]
+            showdown_losers = checkbox_grid(
+                "Showdown Losers",
+                showdown_options,
+                key_prefix=f"losers_{st.session_state.get('form_counter', 0)}",
+                session_id=active_session["id"],
+                columns=2
+            )
+        
+        all_in = False
+        eliminated_players = []
+        
+        if street == "River":
+            st.subheader("All-In")
+            all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}_{st.session_state.get('form_counter', 0)}")
             
-            showdown_losers = []
-            if street == "River" and hand_type != "No Showdown":
-                # Exclude winners from showdown loser options
+            if all_in:
+                # Exclude winners from elimination options
                 winners_to_exclude = winners if split_pot else [winner]
-                showdown_options = [p for p in alive_players if p not in winners_to_exclude]
-                showdown_losers = checkbox_grid(
-                    "Showdown Losers",
-                    showdown_options,
-                    key_prefix="losers",
+                elim_options = [p for p in alive_players if p not in winners_to_exclude]
+                eliminated_players = checkbox_grid(
+                    "Eliminated Player(s)",
+                    elim_options,
+                    key_prefix=f"elim_{st.session_state.get('form_counter', 0)}",
                     session_id=active_session["id"],
                     columns=2
                 )
+        
+        if st.button("Submit Hand", type="primary"):
+            if street == "River" and hand_type != "No Showdown" and len(showdown_losers) == 0:
+                st.error("At least one showdown loser is required for a River showdown hand.")
+                st.stop()
             
-            all_in = False
-            eliminated_players = []
-            
-            if street == "River":
-                st.subheader("All-In")
-                all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}")
-                
-                if all_in:
-                    # Exclude winners from elimination options
-                    winners_to_exclude = winners if split_pot else [winner]
-                    elim_options = [p for p in alive_players if p not in winners_to_exclude]
-                    eliminated_players = checkbox_grid(
-                        "Eliminated Player(s)",
-                        elim_options,
-                        key_prefix="elim",
-                        session_id=active_session["id"],
-                        columns=2
-                    )
-            
-            submitted = st.form_submit_button("Submit Hand", type="primary")
-            
-            if submitted:
-                if street == "River" and hand_type != "No Showdown" and len(showdown_losers) == 0:
-                    st.error("At least one showdown loser is required for a River showdown hand.")
+            # Handle split pot vs single winner
+            if split_pot:
+                if not winners or len(winners) == 0:
+                    st.error("At least one winner must be selected.")
                     st.stop()
-                
-                # Handle split pot vs single winner
-                if split_pot:
-                    if not winners or len(winners) == 0:
-                        st.error("At least one winner must be selected.")
-                        st.stop()
-                    winner_value = json.dumps(winners)
-                else:
-                    winner_value = winner
-                
-                data = {
-                    "hand_number": int(datetime.utcnow().timestamp()),
-                    "winner": winner_value,
-                    "street": street,
-                    "hand_type": hand_type,
-                    "pot_size": pot_size,
-                    "all_in": all_in,
-                    "eliminated_player": eliminated_players,
-                    "showdown_losers": showdown_losers,
-                    "players_in_game": players_in_game,
-                    "game_name": active_session["name"],
-                    "created_at": datetime.utcnow().isoformat(),
-                }
-                
-                try:
-                    supabase.table("hands").insert(data).execute()
-                    st.cache_data.clear()
-                    st.session_state["hand_submitted"] = True
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error logging hand: {e}")
+                winner_value = json.dumps(winners)
+            else:
+                winner_value = winner
+            
+            data = {
+                "hand_number": int(datetime.utcnow().timestamp()),
+                "winner": winner_value,
+                "street": street,
+                "hand_type": hand_type,
+                "pot_size": pot_size,
+                "all_in": all_in,
+                "eliminated_player": eliminated_players,
+                "showdown_losers": showdown_losers,
+                "players_in_game": players_in_game,
+                "game_name": active_session["name"],
+                "created_at": datetime.utcnow().isoformat(),
+            }
+            
+            try:
+                supabase.table("hands").insert(data).execute()
+                st.cache_data.clear()
+                st.session_state["hand_submitted"] = True
+                st.session_state["form_counter"] = st.session_state.get("form_counter", 0) + 1
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error logging hand: {e}")
 
 # ============================
 # TAB 2: Analytics

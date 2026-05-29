@@ -536,7 +536,7 @@ def build_player_hand_matrix(hands: List[Dict[str, Any]], players_in_game: List[
             else:
                 pot_change = "N/A"
 
-            if isinstance(pot_change, int):
+            if isinstance(pot_change, (int, float)):
                 cum[p]["cumulative_pot_value"] += pot_change
 
             matrix_rows.append({

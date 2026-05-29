@@ -326,7 +326,6 @@ def update_session_players(session_id: str, players: List[str]) -> bool:
         st.error(f"Error updating session players: {e}")
         return False
 
-@st.cache_data(ttl=30)
 def load_hands_for_session(session_name: str) -> List[Dict[str, Any]]:
     """Load all hands for a specific session."""
     try:

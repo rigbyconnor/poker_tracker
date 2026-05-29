@@ -1233,8 +1233,8 @@ with tab2:
         st.subheader("Winning Hand Type Distribution")
         try:
             hand_order = [
-                "High Card", "Pair", "Two Pair", "Trips", "Straight",
-                "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
+                "High Card", "No Showdown", "Pair", "Two Pair", "Trips", "Straight",
+                "Flush", "Full House", "Quads", "Straight Flush"
             ]
             hand_types = [h.get("hand_type") for h in chronological]
             hand_chart = create_distribution_chart(hand_types, "Winning Hand Type Distribution", hand_order)

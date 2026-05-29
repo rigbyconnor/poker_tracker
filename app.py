@@ -861,7 +861,9 @@ with tab1:
         
         showdown_losers = []
         if street == "River" and hand_type != "No Showdown":
-            showdown_options = [p for p in alive_players if p != winner]
+            # Exclude winners from showdown loser options
+            winners_to_exclude = winners if split_pot else [winner]
+            showdown_options = [p for p in alive_players if p not in winners_to_exclude]
             showdown_losers = checkbox_grid(
                 "Showdown Losers",
                 showdown_options,
@@ -878,7 +880,9 @@ with tab1:
             all_in = st.checkbox("All-In", key=f"allin_toggle_{active_session['id']}")
             
             if all_in:
-                elim_options = [p for p in alive_players if p != winner]
+                # Exclude winners from elimination options
+                winners_to_exclude = winners if split_pot else [winner]
+                elim_options = [p for p in alive_players if p not in winners_to_exclude]
                 eliminated_players = checkbox_grid(
                     "Eliminated Player(s)",
                     elim_options,

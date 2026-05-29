@@ -613,10 +613,22 @@ def generate_satirical_summary(hands: List[Dict[str, Any]], players_in_game: Lis
             summary += f"{roast}\n\n"
     
     summary += "## 📊 Final Standings\n\n"
-    sorted_players = sorted(players_in_game, key=lambda p: stats[p]["wins"], reverse=True)
+    # Order by elimination: winner first, then by bust hand number
+    def elimination_order_key(p):
+        if p == winner:
+            return (0, 0)  # Winner first
+        elif stats[p]["eliminated"]:
+            return (1, stats[p]["busted_hand"] or 999)  # Then by bust hand
+        else:
+            return (2, 0)  # Shouldn't happen
+    
+    sorted_players = sorted(players_in_game, key=elimination_order_key)
     for i, p in enumerate(sorted_players, 1):
         p_stats = stats[p]
-        status = "🏆 WINNER" if p == winner else f"💀 Busted by {p_stats['busted_by']}"
+        if p == winner:
+            status = "🏆 WINNER"
+        else:
+            status = f"💀 Knocked out by {p_stats['busted_by']} on hand #{p_stats['busted_hand']}"
         summary += f"{i}. **{p}** - {p_stats['wins']} wins, {p_stats['folds']} folds - {status}\n"
     
     return summary

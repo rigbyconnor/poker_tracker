@@ -539,8 +539,8 @@ def build_player_hand_matrix(hands: List[Dict[str, Any]], players_in_game: List[
             if isinstance(pot_change, (int, float)):
                 cum[p]["cumulative_pot_value"] += pot_change
 
-            # Set cumulative pot value to 0 for eliminated players
-            display_cumulative_pot_value = cum[p]["cumulative_pot_value"] if alive_before[p] else 0
+            # Set cumulative pot value to 0 for eliminated players (after elimination)
+            display_cumulative_pot_value = cum[p]["cumulative_pot_value"] if alive_after[p] else 0
 
             matrix_rows.append({
                 "hand_id": hand_id,

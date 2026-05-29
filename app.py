@@ -822,18 +822,25 @@ with tab1:
         col1, col2 = st.columns(2)
         
         with col1:
+            st.subheader("Street")
+            streets = ["Preflop", "Flop", "Turn", "River"]
+            street = st.radio("", streets, key=f"street_radio_{active_session['id']}")
+        
+        with col2:
             st.subheader("Winner")
+            winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}")
+        
+        # Split Pot checkbox only appears when River is selected
+        if street == "River":
             split_pot = st.checkbox("Split Pot?", key=f"split_pot_{active_session['id']}")
             
             if split_pot:
                 winners = st.multiselect("Select winners:", alive_players, key=f"winners_multiselect_{active_session['id']}")
             else:
-                winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}")
-        
-        with col2:
-            st.subheader("Street")
-            streets = ["Preflop", "Flop", "Turn", "River"]
-            street = st.radio("", streets, key=f"street_radio_{active_session['id']}")
+                winners = [winner]
+        else:
+            split_pot = False
+            winners = [winner]
         
         col3, col4 = st.columns(2)
         

@@ -357,6 +357,19 @@ def load_hands_for_session(session_name: str) -> List[Dict[str, Any]]:
 # ---------------------------------------------------------
 # Helper Functions
 # ---------------------------------------------------------
+def parse_winners(winner_field: Any) -> List[str]:
+    """Parse winner field - handles both single string and JSON array."""
+    if isinstance(winner_field, list):
+        return winner_field
+    if isinstance(winner_field, str):
+        if winner_field.startswith("["):
+            try:
+                return json.loads(winner_field)
+            except:
+                return [winner_field]
+        return [winner_field]
+    return []
+
 def checkbox_grid(label: str, options: List[str], key_prefix: str, session_id: str, 
                   columns: int = 2, prechecked: Optional[List[str]] = None) -> List[str]:
     """Create a grid of checkboxes."""
@@ -415,7 +428,7 @@ def build_player_hand_matrix(hands: List[Dict[str, Any]], players_in_game: List[
 
     for idx, h in enumerate(chronological, start=1):
         hand_id = h["id"]
-        winner = h["winner"]
+        winners = parse_winners(h["winner"])
         street = h["street"]
         hand_type = h["hand_type"]
         pot_size = h["pot_size"]
@@ -441,17 +454,21 @@ def build_player_hand_matrix(hands: List[Dict[str, Any]], players_in_game: List[
 
         aggressive_win = (street != "River")
 
-        if cum[winner]["alive"]:
-            cum[winner]["wins"] += 1
+        # Process each winner
+        for winner in winners:
+            if cum[winner]["alive"]:
+                cum[winner]["wins"] += 1
 
         is_showdown = (street == "River" and hand_type != "No Showdown")
-        if is_showdown and cum[winner]["alive"]:
-            cum[winner]["showdown_wins"] += 1
+        if is_showdown:
+            for winner in winners:
+                if cum[winner]["alive"]:
+                    cum[winner]["showdown_wins"] += 1
 
         for p in players_in_game:
             if cum[p]["alive"]:
                 if (
-                    p != winner
+                    p not in winners
                     and p not in showdown_losers
                     and p not in eliminated
                 ):
@@ -460,20 +477,22 @@ def build_player_hand_matrix(hands: List[Dict[str, Any]], players_in_game: List[
         for p in eliminated:
             if cum[p]["alive"]:
                 cum[p]["alive"] = False
-                cum[winner]["elims"] += 1
+                # Credit elim to all winners for split pots
+                for winner in winners:
+                    cum[winner]["elims"] += 1
 
         for p in players_in_game:
             if not cum[p]["alive"]:
                 continue
 
-            if p == winner:
+            if p in winners:
                 cum[p]["win_streak"] += 1
                 cum[p]["loss_streak"] = 0
             else:
                 cum[p]["loss_streak"] += 1
                 cum[p]["win_streak"] = 0
 
-            if p == winner:
+            if p in winners:
                 cum[p]["hands_since_last_win"] = 0
             else:
                 cum[p]["hands_since_last_win"] += 1
@@ -489,16 +508,16 @@ def build_player_hand_matrix(hands: List[Dict[str, Any]], players_in_game: List[
         for p in players_in_game:
             if alive_before[p]:
                 folded = (
-                    p != winner
+                    p not in winners
                     and p not in showdown_losers
                     and p not in eliminated
                 )
                 showdown_participation = (
-                    is_showdown and (p == winner or p in showdown_losers)
+                    is_showdown and (p in winners or p in showdown_losers)
                 )
                 showdown_loser = (p in showdown_losers)
                 eliminated_flag = (p in eliminated)
-                aggressive_flag = (p == winner and aggressive_win)
+                aggressive_flag = (p in winners and aggressive_win)
             else:
                 folded = "N/A"
                 showdown_participation = "N/A"
@@ -507,8 +526,9 @@ def build_player_hand_matrix(hands: List[Dict[str, Any]], players_in_game: List[
                 aggressive_flag = "N/A"
 
             if alive_before[p]:
-                if p == winner:
-                    pot_change = pot_val
+                if p in winners:
+                    # Split pot: divide pot value among winners
+                    pot_change = pot_val / len(winners)
                 elif p in showdown_losers:
                     pot_change = -pot_val
                 else:
@@ -528,7 +548,7 @@ def build_player_hand_matrix(hands: List[Dict[str, Any]], players_in_game: List[
                 "player": p,
                 "alive_before": alive_before[p],
                 "alive_after": alive_after[p],
-                "winner": (p == winner) if alive_before[p] else "N/A",
+                "winner": (p in winners) if alive_before[p] else "N/A",
                 "folded": folded,
                 "showdown_participation": showdown_participation,
                 "showdown_loser": showdown_loser,
@@ -803,7 +823,12 @@ with tab1:
         
         with col1:
             st.subheader("Winner")
-            winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}")
+            split_pot = st.checkbox("Split Pot?", key=f"split_pot_{active_session['id']}")
+            
+            if split_pot:
+                winners = st.multiselect("Select winners:", alive_players, key=f"winners_multiselect_{active_session['id']}")
+            else:
+                winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}")
         
         with col2:
             st.subheader("Street")
@@ -867,9 +892,18 @@ with tab1:
                 st.error("At least one showdown loser is required for a River showdown hand.")
                 st.stop()
             
+            # Handle split pot vs single winner
+            if split_pot:
+                if not winners or len(winners) == 0:
+                    st.error("At least one winner must be selected.")
+                    st.stop()
+                winner_value = json.dumps(winners)
+            else:
+                winner_value = winner
+            
             data = {
                 "hand_number": int(datetime.utcnow().timestamp()),
-                "winner": winner,
+                "winner": winner_value,
                 "street": street,
                 "hand_type": hand_type,
                 "pot_size": pot_size,
@@ -957,39 +991,50 @@ with tab2:
                 for p in alive_players_list:
                     player_stats[p]["hands_played"] += 1
                 
-                winner = h.get("winner")
-                if winner not in player_stats:
+                # Parse winners (handles both single string and JSON array)
+                winners = parse_winners(h.get("winner"))
+                if not winners:
                     continue
                 
-                if player_stats[winner]["alive"]:
-                    player_stats[winner]["wins"] += 1
-                
                 street = h.get("street", "Unknown")
-                
-                if street != "River" and player_stats[winner]["alive"]:
-                    player_stats[winner]["aggressive_wins"] += 1
-                
                 pot_size = h.get("pot_size")
-                if pot_size == "S":
-                    player_stats[winner]["pots_won_S"] += 1
-                elif pot_size == "M":
-                    player_stats[winner]["pots_won_M"] += 1
-                elif pot_size == "L":
-                    player_stats[winner]["pots_won_L"] += 1
-                
                 hand_type = h.get("hand_type", "No Showdown")
                 showdown_losers = h.get("showdown_losers") or []
                 if isinstance(showdown_losers, str):
                     showdown_losers = [showdown_losers]
                 
                 is_showdown = (street == "River" and hand_type != "No Showdown")
+                is_aggressive = (street != "River")
                 
-                if is_showdown:
-                    if player_stats[winner]["alive"]:
-                        player_stats[winner]["showdown_participation"] += 1
-                        player_stats[winner]["showdown_wins"] += 1
-                        player_stats[winner]["showdown_total"] += 1
+                # Process each winner
+                for winner in winners:
+                    if winner not in player_stats:
+                        continue
                     
+                    if player_stats[winner]["alive"]:
+                        player_stats[winner]["wins"] += 1
+                    
+                    if is_aggressive and player_stats[winner]["alive"]:
+                        player_stats[winner]["aggressive_wins"] += 1
+                    
+                    # Split pot value among winners
+                    if pot_size == "S":
+                        player_stats[winner]["pots_won_S"] += 1
+                    elif pot_size == "M":
+                        player_stats[winner]["pots_won_M"] += 1
+                    elif pot_size == "L":
+                        player_stats[winner]["pots_won_L"] += 1
+                
+                # Handle showdown participation
+                if is_showdown:
+                    # Winners get showdown credit
+                    for winner in winners:
+                        if winner in player_stats and player_stats[winner]["alive"]:
+                            player_stats[winner]["showdown_participation"] += 1
+                            player_stats[winner]["showdown_wins"] += 1
+                            player_stats[winner]["showdown_total"] += 1
+                    
+                    # Losers get showdown participation
                     for p in showdown_losers:
                         if p in player_stats and player_stats[p]["alive"]:
                             player_stats[p]["showdown_participation"] += 1
@@ -997,7 +1042,7 @@ with tab2:
                 
                 for p in alive_players_list:
                     if (
-                        p != winner
+                        p not in winners
                         and p not in showdown_losers
                         and p not in (h.get("eliminated_player") or [])
                     ):
@@ -1009,16 +1054,20 @@ with tab2:
                 
                 for p in eliminated:
                     if p in player_stats and player_stats[p]["alive"]:
-                        player_stats[winner]["elim_wins"] += 1
+                        # For split pots, credit elim to all winners
+                        for winner in winners:
+                            if winner in player_stats:
+                                player_stats[winner]["elim_wins"] += 1
                         player_stats[p]["alive"] = False
                         player_stats[p]["busted_on_hand"] = idx
-                        player_stats[p]["busted_by"] = winner
+                        # For split pots, busted_by is the first winner
+                        player_stats[p]["busted_by"] = winners[0] if winners else None
                 
                 for p in players_in_game:
                     if p not in player_stats or not player_stats[p]["alive"]:
                         continue
                     
-                    if p == winner:
+                    if p in winners:
                         player_stats[p]["current_win_streak"] += 1
                         player_stats[p]["current_loss_streak"] = 0
                         player_stats[p]["max_win_streak"] = max(
@@ -1364,7 +1413,8 @@ with tab3:
         return [p for p in players_in_game if p not in eliminated_before]
     
     def render_hand(h: Dict[str, Any], hand_number: int):
-        winner = h["winner"]
+        winners = parse_winners(h["winner"])
+        winner_display = " & ".join(winners) if len(winners) > 1 else winners[0] if winners else "Unknown"
         street = h["street"]
         hand_type = h["hand_type"]
         pot_size = h["pot_size"]
@@ -1378,7 +1428,7 @@ with tab3:
             eliminated = [eliminated]
         
         line = (
-            f"Hand #{hand_number} — {winner} won with {hand_type} "
+            f"Hand #{hand_number} — {winner_display} won with {hand_type} "
             f"on the {street} (Pot: {pot_size})"
         )
         
@@ -1427,12 +1477,29 @@ with tab3:
                     with st.expander(f"Editing Hand #{hand_number}", expanded=True):
                         alive_at_time = get_alive_players_at_hand(h["id"])
                         
-                        new_winner = st.radio(
-                            "Winner",
-                            alive_at_time,
-                            index=alive_at_time.index(h["winner"]),
-                            key=f"edit_winner_{h['id']}"
-                        )
+                        # Parse existing winner to check for split pot
+                        existing_winners = parse_winners(h["winner"])
+                        is_split_pot = len(existing_winners) > 1
+                        
+                        st.subheader("Winner")
+                        new_split_pot = st.checkbox("Split Pot?", value=is_split_pot, key=f"edit_split_pot_{h['id']}")
+                        
+                        if new_split_pot:
+                            new_winners = st.multiselect(
+                                "Select winners:",
+                                alive_at_time,
+                                default=existing_winners,
+                                key=f"edit_winners_multiselect_{h['id']}"
+                            )
+                        else:
+                            # If switching from split to single, use first winner as default
+                            default_winner = existing_winners[0] if existing_winners and existing_winners[0] in alive_at_time else alive_at_time[0]
+                            new_winner = st.radio(
+                                "Winner",
+                                alive_at_time,
+                                index=alive_at_time.index(default_winner) if default_winner in alive_at_time else 0,
+                                key=f"edit_winner_{h['id']}"
+                            )
                         
                         streets = ["Preflop", "Flop", "Turn", "River"]
                         new_street = st.radio(
@@ -1469,7 +1536,9 @@ with tab3:
                         
                         new_showdown_losers = []
                         if new_street == "River" and new_hand_type != "No Showdown":
-                            loser_options = [p for p in alive_at_time if p != new_winner]
+                            # Exclude winners from loser options
+                            winners_to_exclude = new_winners if new_split_pot else [new_winner]
+                            loser_options = [p for p in alive_at_time if p not in winners_to_exclude]
                             new_showdown_losers = checkbox_grid(
                                 "Showdown Losers",
                                 loser_options,
@@ -1480,7 +1549,9 @@ with tab3:
                         
                         new_eliminated = []
                         if new_all_in:
-                            elim_options = [p for p in alive_at_time if p != new_winner]
+                            # Exclude winners from elimination options
+                            winners_to_exclude = new_winners if new_split_pot else [new_winner]
+                            elim_options = [p for p in alive_at_time if p not in winners_to_exclude]
                             new_eliminated = checkbox_grid(
                                 "Eliminated Player(s)",
                                 elim_options,
@@ -1490,8 +1561,17 @@ with tab3:
                             )
                         
                         if st.button("Save Changes", key=f"save_edit_{h['id']}"):
+                            # Handle split pot vs single winner
+                            if new_split_pot:
+                                if not new_winners or len(new_winners) == 0:
+                                    st.error("At least one winner must be selected.")
+                                    st.stop()
+                                winner_value = json.dumps(new_winners)
+                            else:
+                                winner_value = new_winner
+                            
                             updated = {
-                                "winner": new_winner,
+                                "winner": winner_value,
                                 "street": new_street,
                                 "hand_type": new_hand_type,
                                 "pot_size": new_pot_size,

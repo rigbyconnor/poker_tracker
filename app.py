@@ -868,6 +868,7 @@ with tab1:
             
             try:
                 supabase.table("hands").insert(data).execute()
+                st.cache_data.clear()
                 st.success("Hand logged!")
                 st.rerun()
             except Exception as e:
@@ -1391,6 +1392,7 @@ with tab3:
                         if st.button("Yes, Delete", key=f"yes_delete_{h['id']}"):
                             try:
                                 supabase.table("hands").delete().eq("id", h["id"]).execute()
+                                st.cache_data.clear()
                                 st.success("Hand deleted.")
                                 st.session_state["confirm_delete"] = None
                                 st.session_state["open_hand"] = None
@@ -1485,6 +1487,7 @@ with tab3:
                             
                             try:
                                 supabase.table("hands").update(updated).eq("id", h["id"]).execute()
+                                st.cache_data.clear()
                                 st.success("Hand updated.")
                                 st.session_state["editing_hand"] = None
                                 st.session_state["open_hand"] = None
@@ -1567,6 +1570,7 @@ with tab4:
                 if st.button("Yes, Delete Player", key="confirm_delete_player_yes"):
                     try:
                         supabase.table("players").delete().eq("name", player_to_delete).execute()
+                        st.cache_data.clear()
                         st.success(f"Deleted player '{player_to_delete}'.")
                         st.session_state["confirm_delete_player"] = None
                         st.rerun()
@@ -1601,6 +1605,7 @@ with tab4:
                     try:
                         supabase.table("hands").delete().eq("game_name", session_to_delete).execute()
                         supabase.table("sessions").delete().eq("name", session_to_delete).execute()
+                        st.cache_data.clear()
                         
                         st.success(f"Session '{session_to_delete}' deleted.")
                         st.session_state["confirm_delete_session"] = None

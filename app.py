@@ -819,7 +819,7 @@ with tab1:
                 allowed_hand_types = ["No Showdown"]
             else:
                 allowed_hand_types = [
-                    "High Card", "Pair", "Two Pair", "Trips", "Straight",
+                    "No Showdown", "High Card", "Pair", "Two Pair", "Trips", "Straight",
                     "Flush", "Full House", "Quads", "Straight Flush"
                 ]
             
@@ -1443,8 +1443,8 @@ with tab3:
                         )
                         
                         hand_types = [
-                            "High Card", "Pair", "Two Pair", "Trips", "Straight",
-                            "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
+                            "No Showdown", "High Card", "Pair", "Two Pair", "Trips", "Straight",
+                            "Flush", "Full House", "Quads", "Straight Flush"
                         ]
                         new_hand_type = st.radio(
                             "Hand Type",

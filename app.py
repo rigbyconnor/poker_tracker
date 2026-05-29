@@ -405,7 +405,7 @@ def generate_satirical_summary(hands: List[Dict[str, Any]], players_in_game: Lis
     chronological = list(reversed(hands))
     
     # Calculate player stats
-    stats = {p: {"wins": 0, "folds": 0, "showdown_wins": 0, "showdown_losses": 0, "showdown_total": 0, "eliminated": False, "busted_by": None, "busted_hand": None, "aggressive_wins": 0, "small_pot_wins": 0, "big_pot_wins": 0} for p in players_in_game}
+    stats = {p: {"wins": 0, "folds": 0, "showdown_wins": 0, "showdown_losses": 0, "showdown_total": 0, "eliminated": False, "busted_by": None, "busted_hand": None, "aggressive_wins": 0, "small_pot_wins": 0, "big_pot_wins": 0, "alive": True} for p in players_in_game}
     elim_order = []
     
     for idx, h in enumerate(chronological, start=1):
@@ -442,13 +442,15 @@ def generate_satirical_summary(hands: List[Dict[str, Any]], players_in_game: Lis
                     stats[loser]["showdown_total"] += 1
         
         for p in players_in_game:
-            if p not in winners and p not in showdown_losers and p not in eliminated:
-                if p in stats:
-                    stats[p]["folds"] += 1
+            if stats[p]["alive"]:
+                if p not in winners and p not in showdown_losers and p not in eliminated:
+                    if p in stats:
+                        stats[p]["folds"] += 1
         
         for p in eliminated:
             if p in stats and not stats[p]["eliminated"]:
                 stats[p]["eliminated"] = True
+                stats[p]["alive"] = False
                 stats[p]["busted_by"] = winners[0] if winners else "Unknown"
                 stats[p]["busted_hand"] = idx
                 elim_order.append((p, idx))

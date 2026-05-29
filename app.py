@@ -270,7 +270,6 @@ supabase = get_supabase_client()
 # ---------------------------------------------------------
 # Database Functions (Cached)
 # ---------------------------------------------------------
-@st.cache_data(ttl=60)
 def load_players() -> List[Dict[str, Any]]:
     """Load all players from database."""
     try:
@@ -283,13 +282,19 @@ def load_players() -> List[Dict[str, Any]]:
 def add_player(name: str) -> bool:
     """Add a new player to database."""
     try:
+        # Check if player already exists
+        existing = supabase.table("players").select("*").eq("name", name).execute()
+        if existing.data:
+            st.error(f"Player '{name}' already exists.")
+            return False
+        
         supabase.table("players").insert({"name": name}).execute()
+        st.cache_data.clear()
         return True
     except Exception as e:
         st.error(f"Error adding player: {e}")
         return False
 
-@st.cache_data(ttl=60)
 def load_sessions() -> List[Dict[str, Any]]:
     """Load all sessions from database."""
     try:
@@ -307,11 +312,18 @@ def load_sessions() -> List[Dict[str, Any]]:
 def create_session(name: str, players: List[str]) -> Optional[Dict[str, Any]]:
     """Create a new session."""
     try:
+        # Check if session name already exists
+        existing = supabase.table("sessions").select("*").eq("name", name).execute()
+        if existing.data:
+            st.error(f"A session named '{name}' already exists. Please choose a different name.")
+            return None
+        
         response = (
             supabase.table("sessions")
             .insert({"name": name, "players": players})
             .execute()
         )
+        st.cache_data.clear()
         return response.data[0] if response.data else None
     except Exception as e:
         st.error(f"Error creating session: {e}")
@@ -321,6 +333,7 @@ def update_session_players(session_id: str, players: List[str]) -> bool:
     """Update session players."""
     try:
         supabase.table("sessions").update({"players": players}).eq("id", session_id).execute()
+        st.cache_data.clear()
         return True
     except Exception as e:
         st.error(f"Error updating session players: {e}")

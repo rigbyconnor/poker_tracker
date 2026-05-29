@@ -395,6 +395,115 @@ def checkbox_grid(label: str, options: List[str], key_prefix: str, session_id: s
 
     return selected
 
+def generate_satirical_summary(hands: List[Dict[str, Any]], players_in_game: List[str], session_name: str) -> str:
+    """Generate a satirical game summary based on player performance."""
+    if not hands:
+        return "No hands played yet. The game hasn't even started!"
+    
+    chronological = list(reversed(hands))
+    
+    # Calculate player stats
+    stats = {p: {"wins": 0, "folds": 0, "showdown_wins": 0, "showdown_total": 0, "eliminated": False, "busted_by": None, "busted_hand": None} for p in players_in_game}
+    elim_order = []
+    
+    for idx, h in enumerate(chronological, start=1):
+        winners = parse_winners(h["winner"])
+        street = h["street"]
+        hand_type = h["hand_type"]
+        showdown_losers = h.get("showdown_losers") or []
+        if isinstance(showdown_losers, str):
+            showdown_losers = [showdown_losers]
+        eliminated = h.get("eliminated_player") or []
+        if isinstance(eliminated, str):
+            eliminated = [eliminated]
+        
+        for winner in winners:
+            if winner in stats:
+                stats[winner]["wins"] += 1
+        
+        is_showdown = (street == "River" and hand_type != "No Showdown")
+        if is_showdown:
+            for winner in winners:
+                if winner in stats:
+                    stats[winner]["showdown_wins"] += 1
+                    stats[winner]["showdown_total"] += 1
+            for loser in showdown_losers:
+                if loser in stats:
+                    stats[loser]["showdown_total"] += 1
+        
+        for p in players_in_game:
+            if p not in winners and p not in showdown_losers and p not in eliminated:
+                if p in stats:
+                    stats[p]["folds"] += 1
+        
+        for p in eliminated:
+            if p in stats and not stats[p]["eliminated"]:
+                stats[p]["eliminated"] = True
+                stats[p]["busted_by"] = winners[0] if winners else "Unknown"
+                stats[p]["busted_hand"] = idx
+                elim_order.append((p, idx))
+    
+    # Find the winner (last remaining)
+    winner = [p for p in players_in_game if not stats[p]["eliminated"]][0] if players_in_game else "Unknown"
+    
+    # Generate roasts
+    roasts = []
+    
+    # First elimination
+    if elim_order:
+        first_out, first_hand = elim_order[0]
+        roasts.append(f"🚩 **{first_out}** was the first to go, busting on hand #{first_hand}. At least they got to leave early.")
+    
+    # The folder
+    max_folds = max(stats[p]["folds"] for p in players_in_game)
+    if max_folds > 0:
+        folder = max(stats, key=lambda p: stats[p]["folds"])
+        if stats[folder]["folds"] > len(hands) * 0.5:
+            roasts.append(f"🪑 **{folder}** folded {stats[folder]['folds']} times. That's over half the hands! Are they even playing poker or just watching?")
+    
+    # Showdown disaster
+    showdown_players = {p: stats[p] for p in players_in_game if stats[p]["showdown_total"] >= 3}
+    if showdown_players:
+        worst_showdown = min(showdown_players, key=lambda p: stats[p]["showdown_wins"] / stats[p]["showdown_total"] if stats[p]["showdown_total"] > 0 else 0)
+        worst_rate = stats[worst_showdown]["showdown_wins"] / stats[worst_showdown]["showdown_total"] if stats[worst_showdown]["showdown_total"] > 0 else 0
+        if worst_rate < 0.3:
+            roasts.append(f"💀 **{worst_showdown}** had a showdown win rate of {worst_rate:.0%}. Maybe check the hand rankings next time?")
+    
+    # The bully (aggressive wins)
+    aggressive_players = {p: stats[p] for p in players_in_game if stats[p]["wins"] > 0}
+    if aggressive_players:
+        bully = max(aggressive_players, key=lambda p: stats[p]["wins"])
+        if stats[bully]["wins"] >= 3:
+            roasts.append(f"😈 **{bully}** won {stats[bully]['wins']} hands. Someone was feeling aggressive tonight.")
+    
+    # Winner roast
+    if winner != "Unknown":
+        winner_stats = stats[winner]
+        if winner_stats["wins"] == 1 and len(hands) > 5:
+            roasts.append(f"🏆 **{winner}** won with only {winner_stats['wins']} win. Sometimes you just get lucky!")
+        else:
+            roasts.append(f"🏆 **{winner}** takes it all with {winner_stats['wins']} wins. The poker gods have spoken.")
+    
+    # Build summary
+    summary = f"# 🎰 Game Over: {session_name}\n\n"
+    summary += f"**Winner:** {winner}\n"
+    summary += f"**Total Hands:** {len(hands)}\n"
+    summary += f"**Players:** {len(players_in_game)}\n\n"
+    
+    if roasts:
+        summary += "## 🎭 The Roast Report\n\n"
+        for roast in roasts:
+            summary += f"{roast}\n\n"
+    
+    summary += "## 📊 Final Standings\n\n"
+    sorted_players = sorted(players_in_game, key=lambda p: stats[p]["wins"], reverse=True)
+    for i, p in enumerate(sorted_players, 1):
+        p_stats = stats[p]
+        status = "🏆 WINNER" if p == winner else f"💀 Busted by {p_stats['busted_by']}"
+        summary += f"{i}. **{p}** - {p_stats['wins']} wins, {p_stats['folds']} folds - {status}\n"
+    
+    return summary
+
 # ---------------------------------------------------------
 # Analytics Functions
 # ---------------------------------------------------------
@@ -827,6 +936,13 @@ with tab1:
         if not alive_players:
             st.info("All players have been eliminated.")
             st.stop()
+        
+        # Game over detection - show satirical summary when only 1 player remains
+        if len(alive_players) == 1:
+            st.success("🎉 GAME OVER! Only one player remains!")
+            summary = generate_satirical_summary(hands, players_in_game, active_session["name"])
+            st.markdown(summary)
+            st.markdown("---")
         
         col1, col2 = st.columns(2)
         

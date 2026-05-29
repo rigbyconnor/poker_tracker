@@ -651,7 +651,14 @@ def create_distribution_chart(data: List[str], title: str, order: List[str]) -> 
         category_orders={"Category": order}
     )
     
-    fig.update_layout(height=300, yaxis={"categoryorder": "array", "categoryarray": order})
+    # Dynamically set height based on number of categories
+    chart_height = max(300, len(order) * 35)
+    fig.update_layout(
+        height=chart_height,
+        yaxis={"categoryorder": "array", "categoryarray": order},
+        margin=dict(l=20, r=20, t=40, b=20),
+        autosize=True
+    )
     
     return fig
 

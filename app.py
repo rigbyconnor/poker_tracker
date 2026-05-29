@@ -828,19 +828,19 @@ with tab1:
         
         with col2:
             st.subheader("Winner")
-            winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}")
-        
-        # Split Pot checkbox only appears when River is selected
-        if street == "River":
-            split_pot = st.checkbox("Split Pot?", key=f"split_pot_{active_session['id']}")
-            
-            if split_pot:
-                winners = st.multiselect("Select winners:", alive_players, key=f"winners_multiselect_{active_session['id']}")
+            # Split Pot checkbox only appears when River is selected
+            if street == "River":
+                split_pot = st.checkbox("Split Pot?", key=f"split_pot_{active_session['id']}")
+                
+                if split_pot:
+                    winners = st.multiselect("Select winners:", alive_players, key=f"winners_multiselect_{active_session['id']}")
+                else:
+                    winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}")
+                    winners = [winner]
             else:
+                split_pot = False
+                winner = st.radio("", alive_players, key=f"winner_radio_{active_session['id']}")
                 winners = [winner]
-        else:
-            split_pot = False
-            winners = [winner]
         
         col3, col4 = st.columns(2)
         
@@ -867,10 +867,9 @@ with tab1:
             pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}")
         
         showdown_losers = []
-        # Showdown losers only when not a split pot
-        if street == "River" and hand_type != "No Showdown" and not split_pot:
-            # Exclude winner from showdown loser options
-            winners_to_exclude = [winner]
+        if street == "River" and hand_type != "No Showdown":
+            # Exclude winners from showdown loser options
+            winners_to_exclude = winners if split_pot else [winner]
             showdown_options = [p for p in alive_players if p not in winners_to_exclude]
             showdown_losers = checkbox_grid(
                 "Showdown Losers",

@@ -397,19 +397,22 @@ def checkbox_grid(label: str, options: List[str], key_prefix: str, session_id: s
 
 def generate_satirical_summary(hands: List[Dict[str, Any]], players_in_game: List[str], session_name: str) -> str:
     """Generate a satirical game summary based on player performance."""
+    import random
+    
     if not hands:
         return "No hands played yet. The game hasn't even started!"
     
     chronological = list(reversed(hands))
     
     # Calculate player stats
-    stats = {p: {"wins": 0, "folds": 0, "showdown_wins": 0, "showdown_total": 0, "eliminated": False, "busted_by": None, "busted_hand": None} for p in players_in_game}
+    stats = {p: {"wins": 0, "folds": 0, "showdown_wins": 0, "showdown_total": 0, "eliminated": False, "busted_by": None, "busted_hand": None, "aggressive_wins": 0, "small_pot_wins": 0, "big_pot_wins": 0} for p in players_in_game}
     elim_order = []
     
     for idx, h in enumerate(chronological, start=1):
         winners = parse_winners(h["winner"])
         street = h["street"]
         hand_type = h["hand_type"]
+        pot_size = h["pot_size"]
         showdown_losers = h.get("showdown_losers") or []
         if isinstance(showdown_losers, str):
             showdown_losers = [showdown_losers]
@@ -420,6 +423,12 @@ def generate_satirical_summary(hands: List[Dict[str, Any]], players_in_game: Lis
         for winner in winners:
             if winner in stats:
                 stats[winner]["wins"] += 1
+                if street != "River":
+                    stats[winner]["aggressive_wins"] += 1
+                if pot_size == "S":
+                    stats[winner]["small_pot_wins"] += 1
+                elif pot_size == "L":
+                    stats[winner]["big_pot_wins"] += 1
         
         is_showdown = (street == "River" and hand_type != "No Showdown")
         if is_showdown:
@@ -446,43 +455,150 @@ def generate_satirical_summary(hands: List[Dict[str, Any]], players_in_game: Lis
     # Find the winner (last remaining)
     winner = [p for p in players_in_game if not stats[p]["eliminated"]][0] if players_in_game else "Unknown"
     
-    # Generate roasts
-    roasts = []
+    # Build all possible roasts
+    all_roasts = []
     
-    # First elimination
+    # 1. First elimination
     if elim_order:
         first_out, first_hand = elim_order[0]
-        roasts.append(f"🚩 **{first_out}** was the first to go, busting on hand #{first_hand}. At least they got to leave early.")
+        all_roasts.extend([
+            f"🚩 **{first_out}** was the first to go, busting on hand #{first_hand}. At least they got to leave early.",
+            f"🚩 **{first_out}** couldn't even make it past hand #{first_hand}. Shortest game ever?",
+            f"🚩 **{first_out}** busted on hand #{first_hand}. They probably had somewhere better to be.",
+            f"🚩 **{first_out}** was eliminated on hand #{first_hand}. Warm up act for the real players.",
+        ])
     
-    # The folder
+    # 2. The folder
     max_folds = max(stats[p]["folds"] for p in players_in_game)
     if max_folds > 0:
         folder = max(stats, key=lambda p: stats[p]["folds"])
         if stats[folder]["folds"] > len(hands) * 0.5:
-            roasts.append(f"🪑 **{folder}** folded {stats[folder]['folds']} times. That's over half the hands! Are they even playing poker or just watching?")
+            all_roasts.extend([
+                f"🪑 **{folder}** folded {stats[folder]['folds']} times. That's over half the hands! Are they even playing poker or just watching?",
+                f"🪑 **{folder}** folded {stats[folder]['folds']} times. At this point, they're just paying for the buffet.",
+                f"🪑 **{folder}** folded {stats[folder]['folds']} times. Maybe they're allergic to poker chips?",
+                f"🪑 **{folder}** folded {stats[folder]['folds']} times. They're basically a spectator with a chair.",
+            ])
     
-    # Showdown disaster
+    # 3. Showdown disaster
     showdown_players = {p: stats[p] for p in players_in_game if stats[p]["showdown_total"] >= 3}
     if showdown_players:
         worst_showdown = min(showdown_players, key=lambda p: stats[p]["showdown_wins"] / stats[p]["showdown_total"] if stats[p]["showdown_total"] > 0 else 0)
         worst_rate = stats[worst_showdown]["showdown_wins"] / stats[worst_showdown]["showdown_total"] if stats[worst_showdown]["showdown_total"] > 0 else 0
         if worst_rate < 0.3:
-            roasts.append(f"💀 **{worst_showdown}** had a showdown win rate of {worst_rate:.0%}. Maybe check the hand rankings next time?")
+            all_roasts.extend([
+                f"💀 **{worst_showdown}** had a showdown win rate of {worst_rate:.0%}. Maybe check the hand rankings next time?",
+                f"💀 **{worst_showdown}** won only {worst_rate:.0%} of showdowns. They should consider folding pre-flop permanently.",
+                f"💀 **{worst_showdown}**'s showdown win rate is {worst_rate:.0%}. The cards were definitely not their friend tonight.",
+                f"💀 **{worst_showdown}** managed a {worst_rate:.0%} showdown win rate. Impressive consistency in losing.",
+            ])
     
-    # The bully (aggressive wins)
-    aggressive_players = {p: stats[p] for p in players_in_game if stats[p]["wins"] > 0}
+    # 4. The bully (aggressive wins)
+    aggressive_players = {p: stats[p] for p in players_in_game if stats[p]["aggressive_wins"] > 0}
     if aggressive_players:
-        bully = max(aggressive_players, key=lambda p: stats[p]["wins"])
-        if stats[bully]["wins"] >= 3:
-            roasts.append(f"😈 **{bully}** won {stats[bully]['wins']} hands. Someone was feeling aggressive tonight.")
+        bully = max(aggressive_players, key=lambda p: stats[p]["aggressive_wins"])
+        if stats[bully]["aggressive_wins"] >= 2:
+            all_roasts.extend([
+                f"😈 **{bully}** won {stats[bully]['aggressive_wins']} hands before the river. Someone was feeling aggressive tonight.",
+                f"😈 **{bully}** took {stats[bully]['aggressive_wins']} pots pre-river. The table bully was out in full force.",
+                f"😈 **{bully}** won {stats[bully]['aggressive_wins']} hands without showdown. They were on a mission to bankrupt everyone.",
+                f"😈 **{bully}** claimed {stats[bully]['aggressive_wins']} victories pre-river. Someone forgot to share the chips.",
+            ])
     
-    # Winner roast
+    # 5. Winner roast
     if winner != "Unknown":
         winner_stats = stats[winner]
         if winner_stats["wins"] == 1 and len(hands) > 5:
-            roasts.append(f"🏆 **{winner}** won with only {winner_stats['wins']} win. Sometimes you just get lucky!")
+            all_roasts.extend([
+                f"🏆 **{winner}** won with only {winner_stats['wins']} win. Sometimes you just get lucky!",
+                f"🏆 **{winner}** scraped by with {winner_stats['wins']} win. Skill or luck? You decide.",
+                f"🏆 **{winner}** won with just {winner_stats['wins']} hand. The poker gods were feeling generous.",
+                f"🏆 **{winner}** took it with {winner_stats['wins']} win. Sometimes it's better to be lucky than good.",
+            ])
         else:
-            roasts.append(f"🏆 **{winner}** takes it all with {winner_stats['wins']} wins. The poker gods have spoken.")
+            all_roasts.extend([
+                f"🏆 **{winner}** takes it all with {winner_stats['wins']} wins. The poker gods have spoken.",
+                f"🏆 **{winner}** dominated with {winner_stats['wins']} wins. This was their game to lose.",
+                f"🏆 **{winner}** crushed it with {winner_stats['wins']} wins. The rest never stood a chance.",
+                f"🏆 **{winner}** secured the bag with {winner_stats['wins']} wins. Absolute domination.",
+            ])
+    
+    # 6. Fastest bustout
+    if len(elim_order) >= 2:
+        fastest = min(elim_order, key=lambda x: x[1])
+        fastest_player, fastest_hand = fastest
+        if fastest_hand < len(hands) * 0.3:
+            all_roasts.extend([
+                f"⚡ **{fastest_player}** was out by hand #{fastest_hand}. That's gotta be a record for fastest exit.",
+                f"⚡ **{fastest_player}** busted on hand #{fastest_hand}. Blink and you'd miss their game.",
+                f"⚡ **{fastest_player}** lasted only {fastest_hand} hands. Quick game, quick exit.",
+                f"⚡ **{fastest_player}** was eliminated on hand #{fastest_hand}. Speed run complete.",
+            ])
+    
+    # 7. The conservative player (small pot wins)
+    small_pot_players = {p: stats[p] for p in players_in_game if stats[p]["small_pot_wins"] >= 2}
+    if small_pot_players:
+        conservative = max(small_pot_players, key=lambda p: stats[p]["small_pot_wins"])
+        if stats[conservative]["small_pot_wins"] >= 3:
+            all_roasts.extend([
+                f"🐢 **{conservative}** won {stats[conservative]['small_pot_wins']} small pots. Playing it safe or just scared?",
+                f"🐢 **{conservative}** took {stats[conservative]['small_pot_wins']} small pots. They're allergic to big money.",
+                f"🐢 **{conservative}** won {stats[conservative]['small_pot_wins']} tiny pots. The tortoise approach to poker.",
+                f"🐢 **{conservative}** secured {stats[conservative]['small_pot_wins']} small wins. Slow and steady...",
+            ])
+    
+    # 8. The big game hunter (big pot wins)
+    big_pot_players = {p: stats[p] for p in players_in_game if stats[p]["big_pot_wins"] >= 1}
+    if big_pot_players:
+        hunter = max(big_pot_players, key=lambda p: stats[p]["big_pot_wins"])
+        if stats[hunter]["big_pot_wins"] >= 2:
+            all_roasts.extend([
+                f"🦁 **{hunter}** won {stats[hunter]['big_pot_wins']} big pots. They hunt the whales.",
+                f"🦁 **{hunter}** took {stats[hunter]['big_pot_wins']} large pots. High risk, high reward player.",
+                f"🦁 **{hunter}** claimed {stats[hunter]['big_pot_wins']} massive pots. Go big or go home.",
+                f"🦁 **{hunter}** won {stats[hunter]['big_pot_wins']} big pots. The shark at the table.",
+            ])
+    
+    # 9. The survivor (last eliminated before winner)
+    if len(elim_order) >= 1:
+        survivor = elim_order[-1][0] if elim_order else None
+        if survivor and survivor != winner:
+            all_roasts.extend([
+                f"🥈 **{survivor}** was the last to fall. So close, yet so far.",
+                f"🥈 **{survivor}** made it to the final two. Almost had it.",
+                f"🥈 **{survivor}** was the runner-up. The silver medal of poker.",
+                f"🥈 **{survivor}** survived until the end... almost. Second place is just first loser.",
+            ])
+    
+    # 10. The zero win club
+    zero_winners = [p for p in players_in_game if stats[p]["wins"] == 0 and stats[p]["eliminated"]]
+    if zero_winners:
+        zero = zero_winners[0]
+        all_roasts.extend([
+            f"🚫 **{zero}** won zero hands. A perfect game... of losing.",
+            f"🚫 **{zero}** managed to win absolutely nothing. Impressive dedication to failure.",
+            f"🚫 **{zero}** went home empty-handed. At least they saved on gas money?",
+            f"🚫 **{zero}** won 0 hands. They're really good at not winning.",
+        ])
+    
+    # 11. The streaker (if someone had a good win streak)
+    # Simplified - just check if someone won multiple hands in a row
+    # This would require more complex tracking, skipping for now
+    
+    # 12. The participant (lowest win rate among active players)
+    active_players = [p for p in players_in_game if stats[p]["wins"] > 0 or stats[p]["eliminated"]]
+    if len(active_players) >= 2:
+        lowest_win_rate = min(active_players, key=lambda p: stats[p]["wins"] / len(hands) if len(hands) > 0 else 0)
+        if stats[lowest_win_rate]["wins"] < len(hands) * 0.1:
+            all_roasts.extend([
+                f"🎫 **{lowest_win_rate}** had the lowest win rate. Thanks for participating!",
+                f"🎫 **{lowest_win_rate}** won the fewest hands. Participation trophy incoming.",
+                f"🎫 **{lowest_win_rate}** was just happy to be there. And it showed.",
+                f"🎫 **{lowest_win_rate}** had the worst win rate. Maybe try bingo next time?",
+            ])
+    
+    # Randomly select 6 roasts to display
+    selected_roasts = random.sample(all_roasts, min(6, len(all_roasts)))
     
     # Build summary
     summary = f"# 🎰 Game Over: {session_name}\n\n"
@@ -490,9 +606,9 @@ def generate_satirical_summary(hands: List[Dict[str, Any]], players_in_game: Lis
     summary += f"**Total Hands:** {len(hands)}\n"
     summary += f"**Players:** {len(players_in_game)}\n\n"
     
-    if roasts:
+    if selected_roasts:
         summary += "## 🎭 The Roast Report\n\n"
-        for roast in roasts:
+        for roast in selected_roasts:
             summary += f"{roast}\n\n"
     
     summary += "## 📊 Final Standings\n\n"

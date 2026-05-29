@@ -647,8 +647,7 @@ def create_distribution_chart(data: List[str], title: str, order: List[str]) -> 
         x="Count",
         y="Category",
         title=title,
-        orientation="h",
-        category_orders={"Category": order}
+        orientation="h"
     )
     
     # Dynamically set height based on number of categories
@@ -1233,8 +1232,8 @@ with tab2:
         st.subheader("Winning Hand Type Distribution")
         try:
             hand_order = [
-                "High Card", "Pair", "Two Pair", "Trips", "Straight",
-                "Flush", "Full House", "Quads", "Straight Flush", "No Showdown"
+                "No Showdown", "Straight Flush", "Quads", "Full House", "Flush",
+                "Straight", "Trips", "Two Pair", "Pair", "High Card"
             ]
             hand_types = [h.get("hand_type") for h in chronological]
             hand_chart = create_distribution_chart(hand_types, "Winning Hand Type Distribution", hand_order)

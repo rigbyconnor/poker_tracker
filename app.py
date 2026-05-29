@@ -867,9 +867,10 @@ with tab1:
             pot_size = st.radio("", pot_sizes, key=f"potsize_radio_{active_session['id']}")
         
         showdown_losers = []
-        if street == "River" and hand_type != "No Showdown":
-            # Exclude winners from showdown loser options
-            winners_to_exclude = winners if split_pot else [winner]
+        # Showdown losers only when not a split pot
+        if street == "River" and hand_type != "No Showdown" and not split_pot:
+            # Exclude winner from showdown loser options
+            winners_to_exclude = [winner]
             showdown_options = [p for p in alive_players if p not in winners_to_exclude]
             showdown_losers = checkbox_grid(
                 "Showdown Losers",
